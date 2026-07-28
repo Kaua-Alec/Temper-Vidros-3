@@ -1868,6 +1868,7 @@ function EditarOrcamento({ orc, onClose }: { orc: Orcamento; onClose: () => void
 function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (orc: Orcamento) => void; onClose: () => void }) {
   const [itens, setItens] = useState<OrcamentoItem[]>([]);
   const [status, setStatus] = useState(orc.status);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
 
   useEffect(() => {
     supabase.from("orcamento_itens").select("*").eq("orcamento_id", orc.id).then(({ data }) => setItens((data as OrcamentoItem[] | null) ?? []));
@@ -1883,51 +1884,74 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
     onClose();
   };
 
+  const excluirOrcamento = async () => {
+    await supabase.from("orcamento_itens").delete().eq("orcamento_id", orc.id);
+    await supabase.from("pedidos").delete().eq("orcamento_id", orc.id);
+    await supabase.from("financeiro").delete().eq("orcamento_id", orc.id);
+    const { error } = await supabase.from("orcamentos").delete().eq("id", orc.id);
+    if (error) {
+      alert("Erro ao excluir: " + error.message);
+    } else {
+      onClose();
+    }
+  };
+
   return (
-    <Modal wide onClose={onClose} title={`Orçamento ${orc.numero}`}>
-      <div className="mb-4 grid grid-cols-3 gap-3 text-sm">
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Cliente</div><div>{orc.cliente_nome}</div></div>
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Validade</div><div>{dateBR(orc.validade)}</div></div>
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Pagamento</div><div>{orc.forma_pagamento}</div></div>
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Criado por</div><div>{orc.criado_por || "—"}</div></div>
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Criado em</div><div>{dateBR(orc.created_at)}</div></div>
-        <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Total</div><div className="font-display text-lg text-[color:var(--gold-2)]">{brl(orc.total)}</div></div>
-      </div>
-      <div className="mb-4 overflow-x-auto rounded border border-[color:var(--navy-border)]">
-        <table className="w-full text-xs min-w-[450px]">
-          <thead className="bg-[color:var(--navy-surface)] uppercase text-[color:var(--muted-foreground)]">
-            <tr>
-              <th className="p-2 text-left">Item</th>
-              <th className="p-2">Qtd</th>
-              <th className="p-2">Dim.</th>
-              <th className="p-2 text-right">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {itens.map((it) => (
-              <tr key={it.id} className="border-t border-[color:var(--navy-border)]">
-                <td className="p-2"><div className="font-medium">{it.nome}</div><div className="text-[10px] text-[color:var(--muted-foreground)]">{it.espessura} {it.cor}</div></td>
-                <td className="p-2 text-center">{it.quantidade}</td>
-                <td className="p-2 text-center">{it.largura_mm && it.altura_mm ? `${it.altura_mm}×${it.largura_mm}mm` : "—"}</td>
-                <td className="p-2 text-right text-[color:var(--gold-2)]">{brl(it.subtotal)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {orc.observacoes && <div className="mb-4 text-sm"><span className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Observações: </span>{orc.observacoes}</div>}
-      <div className="flex items-end justify-between gap-4">
-        <Field label="Atualizar status">
-          <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-md border border-[color:var(--navy-border)] bg-[color:var(--navy-surface)] px-3 py-2 text-sm">
-            {STATUS.map((s) => <option key={s}>{s}</option>)}
-          </select>
-        </Field>
-        <div className="flex gap-2">
-          <button onClick={() => onEdit(orc)} className="px-3 py-2 text-sm text-[color:var(--gold-2)]">Editar</button>
-          <button onClick={onClose} className="px-3 py-2 text-sm text-[color:var(--muted-foreground)]">Fechar</button>
-          <button onClick={salvarStatus} className="rounded-md bg-[color:var(--gold)] px-4 py-2 text-sm font-semibold text-[color:var(--navy-deep)] hover:bg-[color:var(--gold-2)]">Salvar</button>
+    <>
+      <ConfirmDeleteModal
+        open={deleteConfirm}
+        title="Excluir Orçamento?"
+        description={`O orçamento ${orc.numero} e seus itens serão removidos permanentemente.`}
+        onConfirm={excluirOrcamento}
+        onClose={() => setDeleteConfirm(false)}
+      />
+      <Modal wide onClose={onClose} title={`Orçamento ${orc.numero}`}>
+        <div className="mb-4 grid grid-cols-3 gap-3 text-sm">
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Cliente</div><div>{orc.cliente_nome}</div></div>
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Validade</div><div>{dateBR(orc.validade)}</div></div>
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Pagamento</div><div>{orc.forma_pagamento}</div></div>
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Criado por</div><div>{orc.criado_por || "—"}</div></div>
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Criado em</div><div>{dateBR(orc.created_at)}</div></div>
+          <div><div className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Total</div><div className="font-display text-lg text-[color:var(--gold-2)]">{brl(orc.total)}</div></div>
         </div>
-      </div>
-    </Modal>
+        <div className="mb-4 overflow-x-auto rounded border border-[color:var(--navy-border)]">
+          <table className="w-full text-xs min-w-[450px]">
+            <thead className="bg-[color:var(--navy-surface)] uppercase text-[color:var(--muted-foreground)]">
+              <tr>
+                <th className="p-2 text-left">Item</th>
+                <th className="p-2">Qtd</th>
+                <th className="p-2">Dim.</th>
+                <th className="p-2 text-right">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {itens.map((it) => (
+                <tr key={it.id} className="border-t border-[color:var(--navy-border)]">
+                  <td className="p-2"><div className="font-medium">{it.nome}</div><div className="text-[10px] text-[color:var(--muted-foreground)]">{it.espessura} {it.cor}</div></td>
+                  <td className="p-2 text-center">{it.quantidade}</td>
+                  <td className="p-2 text-center">{it.largura_mm && it.altura_mm ? `${it.altura_mm}×${it.largura_mm}mm` : "—"}</td>
+                  <td className="p-2 text-right text-[color:var(--gold-2)]">{brl(it.subtotal)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        {orc.observacoes && <div className="mb-4 text-sm"><span className="text-[10px] uppercase text-[color:var(--muted-foreground)]">Observações: </span>{orc.observacoes}</div>}
+        <div className="flex items-end justify-between gap-4">
+          <Field label="Atualizar status">
+            <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-md border border-[color:var(--navy-border)] bg-[color:var(--navy-surface)] px-3 py-2 text-sm">
+              {STATUS.map((s) => <option key={s}>{s}</option>)}
+            </select>
+          </Field>
+          <div className="flex gap-2">
+            <button onClick={() => setDeleteConfirm(true)} className="px-3 py-2 text-sm text-red-500 hover:text-red-400">Excluir</button>
+            <button onClick={() => onEdit(orc)} className="px-3 py-2 text-sm text-[color:var(--gold-2)]">Editar</button>
+            <button onClick={onClose} className="px-3 py-2 text-sm text-[color:var(--muted-foreground)]">Fechar</button>
+            <button onClick={salvarStatus} className="rounded-md bg-[color:var(--gold)] px-4 py-2 text-sm font-semibold text-[color:var(--navy-deep)] hover:bg-[color:var(--gold-2)]">Salvar</button>
+          </div>
+        </div>
+      </Modal>
+    </>
   );
 }
+
