@@ -20,6 +20,8 @@ type PrintTemplateProps = {
   cliente: {
     nome: string;
     telefone?: string | null;
+    endereco?: string | null;
+    endereco_completo?: string | null;
   } | null;
   itens: Item[];
   subtotal: number;
@@ -76,9 +78,17 @@ export function PrintTemplate({
           </div>
                 </div>
                 
-                {/* Client Name (Repeating on every page) */}
+                {/* Client Name & Address Details */}
                 <div className="mb-2 border-b border-gray-300 pb-2">
                   <h2 className="text-base font-bold uppercase text-gray-900">{cliente?.nome || "CLIENTE NÃO INFORMADO"}</h2>
+                  {(cliente?.telefone || cliente?.endereco || cliente?.endereco_completo) && (
+                    <div className="text-[12px] text-gray-700 mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+                      {cliente?.telefone && <div><span className="font-semibold">Telefone:</span> {cliente.telefone}</div>}
+                      {(cliente?.endereco || cliente?.endereco_completo) && (
+                        <div><span className="font-semibold">Endereço:</span> {cliente.endereco || cliente.endereco_completo}</div>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </td>

@@ -306,17 +306,23 @@ export function Input({
   onChange,
   type = "text",
   placeholder,
+  min,
+  step,
 }: {
   value: string | number;
   onChange: (v: string) => void;
   type?: string;
   placeholder?: string;
+  min?: string | number;
+  step?: string | number;
 }) {
   return (
     <input
       type={type}
       value={value}
       placeholder={placeholder}
+      min={min}
+      step={step}
       onChange={(e) => onChange(e.target.value)}
       className="w-full rounded-md border border-navy-border bg-navy-surface px-3 py-2 text-sm outline-none focus:border-gold-dim"
     />

@@ -278,6 +278,7 @@ function Catalogo({ isCalculo = false }: { isCalculo?: boolean }) {
                   onChange={(v) => setForm({ ...form, categoria: v })}
                   options={[
                     "",
+                    "Fechamento de Pia",
                     "Espelho",
                     "Box",
                     "Janela",
@@ -332,8 +333,8 @@ function Catalogo({ isCalculo = false }: { isCalculo?: boolean }) {
                 ]}
               />
             </Field>
-            {/* Folhas e Dimensões padrão — só para Janela, Porta, Box, Báscula e Pivotante */}
-            {(form.categoria === "Janela" || form.categoria === "Porta" || form.categoria === "Box" || form.categoria === "Báscula" || form.categoria === "Pivotante" || form.categoria === "Multi portas" || form.categoria === "Porta com bandeira") && (
+            {/* Folhas e Dimensões padrão — só para Janela, Porta, Box, Báscula, Pivotante e Fechamento de Pia */}
+            {(form.categoria === "Fechamento de Pia" || form.categoria === "Janela" || form.categoria === "Porta" || form.categoria === "Box" || form.categoria === "Báscula" || form.categoria === "Pivotante" || form.categoria === "Multi portas" || form.categoria === "Porta com bandeira") && (
               <>
                 <Field label="Número de Folhas">
                   <Select

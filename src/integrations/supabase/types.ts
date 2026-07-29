@@ -221,6 +221,7 @@ export type Database = {
           status: string
           tipo: string
           valor: number
+          valor_pago: number | null
           vencimento: string | null
         }
         Insert: {
@@ -235,6 +236,7 @@ export type Database = {
           status?: string
           tipo?: string
           valor: number
+          valor_pago?: number | null
           vencimento?: string | null
         }
         Update: {
@@ -249,6 +251,7 @@ export type Database = {
           status?: string
           tipo?: string
           valor?: number
+          valor_pago?: number | null
           vencimento?: string | null
         }
         Relationships: [

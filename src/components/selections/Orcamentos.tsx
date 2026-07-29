@@ -6,6 +6,7 @@ import { PrintTemplate } from "./PrintTemplate";
 import { Modal, Field } from "./Clientes";
 import { Plus, Trash2, Search, X, FileText, BookOpen, ClipboardList, User, Tag } from "lucide-react";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
+import { ClienteSelect } from "../ClienteSelect";
 // @ts-ignore
 import html2pdf from "html2pdf.js";
 
@@ -23,6 +24,7 @@ export function Orcamentos() {
   const [open, setOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Orcamento | null>(null);
   const [editing, setEditing] = useState<Orcamento | null>(null);
+  const [deleteOrc, setDeleteOrc] = useState<Orcamento | null>(null);
 
   const load = async () => {
     const { data } = await supabase.from("orcamentos").select("*").order("created_at", { ascending: false });
@@ -31,10 +33,28 @@ export function Orcamentos() {
 
   useEffect(() => { void load(); }, []);
 
+  const handleExcluirOrc = async (id: string) => {
+    await supabase.from("orcamento_itens").delete().eq("orcamento_id", id);
+    await supabase.from("pedidos").delete().eq("orcamento_id", id);
+    await supabase.from("financeiro").delete().eq("orcamento_id", id);
+    const { error } = await supabase.from("orcamentos").delete().eq("id", id);
+    if (error) alert("Erro ao excluir orçamento: " + error.message);
+    setDeleteOrc(null);
+    void load();
+  };
+
   const filtered = filter === "Todos" ? list : list.filter((o) => o.status === filter);
 
   return (
     <div className="space-y-4">
+      <ConfirmDeleteModal
+        open={!!deleteOrc}
+        title="Excluir Orçamento?"
+        description={deleteOrc ? `O orçamento ${deleteOrc.numero} será excluído permanentemente.` : undefined}
+        onConfirm={() => { if (deleteOrc) void handleExcluirOrc(deleteOrc.id); }}
+        onClose={() => setDeleteOrc(null)}
+      />
+
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
         <div className="flex flex-wrap gap-1">
           {["Todos", ...STATUS].map((s) => (
@@ -59,10 +79,11 @@ export function Orcamentos() {
               <th className="p-3 text-left">Status</th>
               <th className="p-3 text-left">Validade</th>
               <th className="p-3 text-right">Total</th>
+              <th className="p-3 text-center">Ações</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 && <tr><td colSpan={5} className="p-6 text-center text-[color:var(--muted-foreground)]">Nenhum orçamento.</td></tr>}
+            {filtered.length === 0 && <tr><td colSpan={6} className="p-6 text-center text-[color:var(--muted-foreground)]">Nenhum orçamento.</td></tr>}
             {filtered.map((o) => (
               <tr key={o.id} onClick={() => setDetalhe(o)} className="cursor-pointer border-t border-[color:var(--navy-border)] hover:bg-[color:var(--navy-surface)]/40 transition">
                 <td className="p-3 font-medium">{o.numero}</td>
@@ -70,6 +91,15 @@ export function Orcamentos() {
                 <td className="p-3"><span className={`rounded-full px-2.5 py-0.5 text-[10px] font-semibold ${statusColor(o.status)}`}>{o.status}</span></td>
                 <td className="p-3 text-xs">{dateBR(o.validade)}</td>
                 <td className="p-3 text-right font-semibold text-[color:var(--gold-2)]">{brl(o.total)}</td>
+                <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setDeleteOrc(o)}
+                    title="Excluir Orçamento"
+                    className="p-1.5 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -95,7 +125,19 @@ export function Orcamentos() {
                 <span className="text-sm font-semibold text-[color:var(--gold-2)]">{brl(o.total)}</span>
               </div>
             </div>
-            <div className="mt-2 text-[11px] text-[color:var(--muted-foreground)]">Validade: {dateBR(o.validade)}</div>
+            <div className="mt-2 flex items-center justify-between text-[11px] text-[color:var(--muted-foreground)]">
+              <span>Validade: {dateBR(o.validade)}</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setDeleteOrc(o);
+                }}
+                className="text-red-400 hover:text-red-300 p-1"
+                title="Excluir"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -257,27 +299,15 @@ function OrcamentoForm({
               <SectionTitle icon={User}>Dados do Orçamento</SectionTitle>
 
               <div className="space-y-2.5">
-                <div>
-                  <FieldLabel>Cliente *</FieldLabel>
-                  <select
-                    value={clienteId}
-                    onChange={(e) => {
-                      setClienteId(e.target.value);
-                      const c = clientes.find((x) => x.id === e.target.value);
-                      if (c) setClienteNome(c.nome);
-                    }}
-                    className={inpCls}
-                  >
-                    <option value="">— Selecionar cadastrado —</option>
-                    {clientes.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
-                  </select>
-                  <input
-                    value={clienteNome}
-                    onChange={(e) => setClienteNome(e.target.value)}
-                    placeholder="ou digite o nome do cliente"
-                    className={`${inpCls} mt-2`}
-                  />
-                </div>
+                <ClienteSelect
+                  label="Cliente"
+                  required
+                  selectedNome={clienteNome}
+                  onSelectCliente={(c) => {
+                    setClienteId(c.id);
+                    setClienteNome(c.nome);
+                  }}
+                />
               </div>
 
               <div className="border-t border-[color:var(--navy-border)]/50" />
@@ -290,7 +320,7 @@ function OrcamentoForm({
                 <div>
                   <FieldLabel>Forma de Pagamento</FieldLabel>
                   <select value={pagamento} onChange={(e) => setPagamento(e.target.value)} className={inpCls}>
-                    {["À vista", "50% entrada", "3x sem juros", "6x sem juros", "10x com juros", "Personalizado"].map((o) => (
+                    {["À vista", "50% entrada", "2x sem juros", "3x sem juros", "4x sem juros", "5x sem juros", "6x sem juros", "10x com juros", "Personalizado"].map((o) => (
                       <option key={o}>{o}</option>
                     ))}
                   </select>
@@ -735,6 +765,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const [origem, setOrigem] = useState<"catalogo" | "esquadria">("catalogo");
   const [catalogo, setCatalogo] = useState<Produto[]>([]);
   const [produtoSelId, setProdutoSelId] = useState<string>("");
+  const [buscaProdConfig, setBuscaProdConfig] = useState("");
 
   const [linha, setLinha] = useState("suprema");
   const [produto, setProduto] = useState("jan2f");
@@ -758,6 +789,14 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
 
   // Mobile tab
   const [activeTab, setActiveTab] = useState<"cliente" | "produto" | "itens" | "resumo">("cliente");
+
+  const catalogoFiltradoConfig = useMemo(() => {
+    if (!buscaProdConfig.trim()) return catalogo;
+    const q = buscaProdConfig.toLowerCase();
+    return catalogo.filter(
+      (p) => p.nome.toLowerCase().includes(q) || (p.categoria && p.categoria.toLowerCase().includes(q))
+    );
+  }, [catalogo, buscaProdConfig]);
 
   useEffect(() => {
     supabase.from("clientes").select("id,nome,telefone,endereco_completo").order("nome")
@@ -891,9 +930,9 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       const opt = {
         margin:       0.2,
         filename:     `Orcamento_${numero || 'SF'}.pdf`,
-        image:        { type: 'jpeg', quality: 0.98 },
+        image:        { type: 'jpeg' as const, quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' }
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' as const }
       };
       
       html2pdf().set(opt).from(element).save().then(() => {
@@ -906,15 +945,14 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
 
   const salvar = async () => {
     if (!clienteSel) { alert("Selecione um cliente."); return; }
-    if (itens.length === 0) { alert("Adicione ao menos um item."); return; }
+    if (itens.length === 0) { alert("Adicione pelo menos um item."); return; }
 
     const desconto = subtotalTotal - totalGeral;
-    
-    let orcId = "";
-    
+    let orcId = orcamentoExistente?.id;
+
     if (orcamentoExistente) {
       const { error } = await supabase.from("orcamentos").update({
-        cliente_id: clienteSel.id || null,
+        cliente_id: clienteSel.id,
         cliente_nome: clienteSel.nome,
         status: statusOrc,
         validade,
@@ -924,10 +962,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         observacoes: obs,
       }).eq("id", orcamentoExistente.id);
       if (error) { alert(error.message); return; }
-      orcId = orcamentoExistente.id;
-      
-      // Delete old items
-      await supabase.from("orcamento_itens").delete().eq("orcamento_id", orcId);
+      await supabase.from("orcamento_itens").delete().eq("orcamento_id", orcamentoExistente.id);
     } else {
       const { data, error } = await supabase.from("orcamentos").insert({
         numero,
@@ -946,7 +981,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
     }
 
     await supabase.from("orcamento_itens").insert(itens.map((it) => ({
-      orcamento_id: orcId,
+      orcamento_id: orcId!,
       nome: it.nome,
       descricao: it.sub,
       quantidade: it.qtd,
@@ -961,8 +996,8 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
 
     if (statusOrc === "Aprovado") {
       const numPed = `PED-${new Date().getFullYear()}-${Math.floor(Math.random() * 900 + 100)}`;
-      await supabase.from("pedidos").insert({ numero: numPed, orcamento_id: data.id, cliente_nome: clienteSel.nome, status: "Aguardando material", criado_por: getUserName() });
-      await supabase.from("financeiro").insert({ tipo: "Receita", descricao: `Orçamento ${numero}`, orcamento_id: data.id, cliente_nome: clienteSel.nome, valor: totalGeral, status: "Pendente", vencimento: validade });
+      await supabase.from("pedidos").insert({ numero: numPed, orcamento_id: orcId!, cliente_nome: clienteSel.nome, status: "Aguardando material", criado_por: getUserName() });
+      await supabase.from("financeiro").insert({ tipo: "Receita", descricao: `Orçamento ${numero}`, orcamento_id: orcId!, cliente_nome: clienteSel.nome, valor: totalGeral, status: "Pendente", vencimento: validade });
     }
     onClose();
   };
@@ -1083,20 +1118,34 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
 
             {/* ── CLIENTE ── */}
             <div className={`p-4 ${activeTab === "cliente" ? "block" : "hidden md:block"}`}>
-              <div className="bg-[color:var(--navy-card)] border border-[color:var(--navy-border)] rounded-xl p-3.5">
-                <div className={`${secLabel} ${secBar}`}>Cliente</div>
-                <button onClick={() => setModalCliOpen(true)} className="w-full flex items-center gap-3 bg-[color:var(--gold)]/5 border border-[color:var(--gold)]/20 hover:border-[color:var(--gold-dim)] hover:bg-[color:var(--gold)]/10 rounded-lg p-3 transition text-left">
-                  <div className="w-8 h-8 rounded-full bg-[color:var(--navy-surface)] border-2 border-[color:var(--gold-dim)] flex items-center justify-center text-xs font-medium text-[color:var(--gold)] shrink-0">
-                    {clienteSel ? iniciais(clienteSel.nome) : "?"}
+              <div className="bg-[color:var(--navy-card)] border border-[color:var(--navy-border)] rounded-xl p-3.5 space-y-2">
+                <ClienteSelect
+                  label="Cliente"
+                  required
+                  selectedCliente={clienteSel ? {
+                    id: clienteSel.id,
+                    nome: clienteSel.nome,
+                    telefone: clienteSel.telefone,
+                    endereco: clienteSel.endereco_completo,
+                    endereco_completo: clienteSel.endereco_completo
+                  } : null}
+                  selectedNome={clienteSel?.nome}
+                  onSelectCliente={(c) => {
+                    setClienteSel({
+                      id: c.id,
+                      nome: c.nome,
+                      telefone: c.telefone,
+                      endereco_completo: c.endereco || c.endereco_completo
+                    });
+                  }}
+                />
+                {clienteSel && (
+                  <div className="text-xs text-[color:var(--muted-foreground)] bg-[color:var(--navy-surface)] p-2 rounded-lg border border-[color:var(--navy-border)]">
+                    <span className="font-semibold text-white">{clienteSel.nome}</span>
+                    {clienteSel.telefone && <div>Tel: {clienteSel.telefone}</div>}
+                    {clienteSel.endereco_completo && <div>End: {clienteSel.endereco_completo}</div>}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-[13px] font-medium text-white">{clienteSel ? clienteSel.nome : "Selecionar cliente"}</div>
-                    <div className="text-[11px] text-[color:var(--muted-foreground)] truncate">
-                      {clienteSel ? `${clienteSel.telefone ?? ""} • ${clienteSel.endereco_completo ?? ""}` : "Clique para buscar um cliente cadastrado"}
-                    </div>
-                  </div>
-                  <Search className="h-4 w-4 text-[color:var(--gold)] shrink-0" />
-                </button>
+                )}
               </div>
 
               {/* Botão avançar para próxima aba (mobile only) */}
@@ -1144,7 +1193,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                 {origem === "catalogo" ? (
                   /* ── MODO CATÁLOGO DO SISTEMA ── */
                   <div className="space-y-3">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                       <label className="text-[11px] text-[color:var(--muted-foreground)] flex items-center justify-between">
                         <span>Selecione o produto/serviço configurado</span>
                         {prodConfigSelecionado?.categoria && (
@@ -1153,32 +1202,83 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                           </span>
                         )}
                       </label>
-                      <select
-                        value={produtoSelId}
-                        onChange={(e) => {
-                          const id = e.target.value;
-                          setProdutoSelId(id);
-                          setPrecoCustom(null);
-                          // Preenche automaticamente as dimensões se o produto tiver medida fixa
-                          const prod = catalogo.find((p) => p.id === id);
-                          if (prod?.largura_mm) setLarg(prod.largura_mm);
-                          if (prod?.altura_mm) setAlt(prod.altura_mm);
-                        }}
-                        className={inpCls}
-                      >
-                        {catalogo.length === 0 ? (
-                          <option value="">Nenhum produto ativo em Configurações</option>
-                        ) : (
-                          <>
-                            <option value="">Selecione...</option>
-                            {catalogo.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.nome}
-                              </option>
-                            ))}
-                          </>
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[color:var(--muted-foreground)]" />
+                        <input
+                          type="text"
+                          placeholder="Digite para filtrar produtos ou serviços..."
+                          value={buscaProdConfig}
+                          onChange={(e) => setBuscaProdConfig(e.target.value)}
+                          className={`${inpCls} pl-8 py-2 text-xs`}
+                        />
+                        {buscaProdConfig && (
+                          <button
+                            type="button"
+                            onClick={() => setBuscaProdConfig("")}
+                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[color:var(--muted-foreground)] hover:text-white"
+                          >
+                            ✕
+                          </button>
                         )}
-                      </select>
+                      </div>
+
+                      {/* Lista de Produtos Resultados Visíveis */}
+                      <div className="max-h-52 overflow-y-auto space-y-1 rounded-lg border border-[color:var(--navy-border)] bg-[color:var(--navy-surface)]/40 p-1.5 mt-1">
+                        {catalogoFiltradoConfig.length === 0 ? (
+                          <div className="py-4 text-center text-xs text-[color:var(--muted-foreground)]">
+                            Nenhum produto encontrado
+                          </div>
+                        ) : (
+                          catalogoFiltradoConfig.map((p) => {
+                            const isSelected = p.id === produtoSelId;
+                            const preco = p.preco_m2
+                              ? `${brl(p.preco_m2)}/m²`
+                              : p.preco_unitario
+                              ? `${brl(p.preco_unitario)}/un`
+                              : "—";
+
+                            return (
+                              <button
+                                key={p.id}
+                                type="button"
+                                onClick={() => {
+                                  setProdutoSelId(p.id);
+                                  setPrecoCustom(null);
+                                  if (p.largura_mm) setLarg(p.largura_mm);
+                                  if (p.altura_mm) setAlt(p.altura_mm);
+                                }}
+                                className={`w-full text-left p-2 rounded-md transition flex items-center justify-between gap-2 border ${
+                                  isSelected
+                                    ? "bg-[color:var(--gold)]/15 border-[color:var(--gold)] text-white shadow-sm"
+                                    : "border-transparent hover:bg-[color:var(--navy-surface)] hover:border-[color:var(--navy-border)] text-gray-200"
+                                }`}
+                              >
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-xs font-semibold truncate flex items-center gap-1.5">
+                                    <span>{p.nome}</span>
+                                    {isSelected && (
+                                      <span className="text-[9px] bg-[color:var(--gold)] text-[color:var(--navy-deep)] px-1.5 py-0.2 rounded font-bold">
+                                        Selecionado
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-[10px] text-[color:var(--muted-foreground)] truncate mt-0.5">
+                                    {[p.categoria, p.espessura, p.cor].filter(Boolean).join(" · ")}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0">
+                                  <div className="text-xs font-bold text-[color:var(--gold-2)]">{preco}</div>
+                                  {p.largura_mm && p.altura_mm && (
+                                    <div className="text-[9px] text-[color:var(--muted-foreground)]">
+                                      {p.altura_mm}×{p.largura_mm}mm
+                                    </div>
+                                  )}
+                                </div>
+                              </button>
+                            );
+                          })
+                        )}
+                      </div>
                     </div>
 
                     {prodConfigSelecionado && (
@@ -1540,10 +1640,9 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                   <div className="flex flex-col gap-1">
                     <label className="text-[11px] text-[color:var(--muted-foreground)]">Forma de Pagamento</label>
                     <select value={pagamento} onChange={(e) => setPagamento(e.target.value)} className={inpCls}>
-                      <option>À vista</option>
-                      <option>2× sem juros</option>
-                      <option>3× sem juros</option>
-                      <option>50% entrada + saldo na entrega</option>
+                      {["À vista", "50% entrada + saldo na entrega", "2x sem juros", "3x sem juros", "4x sem juros", "5x sem juros", "6x sem juros", "10x com juros", "Personalizado"].map((o) => (
+                        <option key={o}>{o}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">
