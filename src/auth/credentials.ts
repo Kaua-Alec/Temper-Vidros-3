@@ -10,19 +10,24 @@ export type AuthUser = {
  */
 export const AUTH_CREDENTIALS: AuthUser[] = [
   {
-    email: "admin@tempervidros.com",
+    email: "kaua@tvsf.com",
     senha: "123",
-    nome: "Administrador",
+    nome: "Kauã",
   },
   {
-    email: "vendas@tempervidros.com",
+    email: "alessandro@tvsf.com",
     senha: "123",
-    nome: "Vendas",
+    nome: "Alessandro",
   },
   {
-    email: "atendimento@tempervidros.com",
+    email: "cristiane@tvsf.com",
     senha: "123",
-    nome: "Atendimento",
+    nome: "Cristiane",
+  },
+  {
+    email: "amanda@tvsf.com",
+    senha: "123",
+    nome: "Amanda",
   },
 ];
 
