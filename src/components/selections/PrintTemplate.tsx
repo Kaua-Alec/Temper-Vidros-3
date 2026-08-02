@@ -162,22 +162,17 @@ export function PrintTemplate({
                         </div>
                         
                         {/* Item Text Details matching user screenshot */}
-                        <div className="flex-1 text-[15px] text-gray-900 leading-snug">
-                          <div className="text-[17px] font-normal mb-2 text-black">{it.nome}</div>
-                          {ambiente && <div className="mb-2">Ambiente: {ambiente}</div>}
-                          {it.larg > 0 && it.alt > 0 && (
-                            <div className="mb-2">
-                              <div className="font-normal">Sugestão de medidas</div>
-                              <div>F1 - L:{it.larg} mm x A:{it.alt} mm</div>
-                            </div>
-                          )}
-                          {corFerragem && <div className="mb-1">Cor ferragem: {corFerragem}</div>}
-                          {corVidro && <div className="mb-1">Cor vidro: {corVidro}</div>}
-                          {corAluminio && <div className="mb-1">Cor alumínio: {corAluminio}</div>}
+                        <div className="flex-1 text-[13px] text-gray-700 leading-snug self-start pt-2">
+                          <div className="text-[15px] font-medium mb-3 text-gray-900">{it.nome}</div>
+                          <div className="grid grid-cols-2 gap-y-2 gap-x-4">
+                            <div>Ambiente: {ambiente || "Não especificado"}</div>
+                            <div>Cor vidro: {corVidro || "Incolor"}</div>
+                            <div>Cor ferragem: {corFerragem || "Padrão"}</div>
+                            <div>Cor alumínio: {corAluminio || "Incolor"}</div>
+                          </div>
                           {obsItem && (
-                            <div className="mt-2">
-                              <div className="font-normal">Obs:</div>
-                              <div>{obsItem}</div>
+                            <div className="mt-3">
+                              <span className="font-semibold">Obs:</span> {obsItem}
                             </div>
                           )}
                         </div>
