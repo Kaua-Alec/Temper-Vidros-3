@@ -22,6 +22,7 @@ const STATUS = ["Pendente", "Aprovado", "Em produção", "Concluído", "Cancelad
 export function Orcamentos() {
   const [list, setList] = useState<Orcamento[]>([]);
   const [filter, setFilter] = useState("Todos");
+  const [searchQuery, setSearchQuery] = useState("");
   const [open, setOpen] = useState(false);
   const [detalhe, setDetalhe] = useState<Orcamento | null>(null);
   const [editing, setEditing] = useState<Orcamento | null>(null);
@@ -44,7 +45,15 @@ export function Orcamentos() {
     void load();
   };
 
-  const filtered = filter === "Todos" ? list : list.filter((o) => o.status === filter);
+  const filtered = list.filter((o) => {
+    const matchStatus = filter === "Todos" || o.status === filter;
+    const searchLower = searchQuery.toLowerCase();
+    const matchSearch =
+      searchQuery === "" ||
+      o.numero.toLowerCase().includes(searchLower) ||
+      (o.cliente_nome || "").toLowerCase().includes(searchLower);
+    return matchStatus && matchSearch;
+  });
 
   return (
     <div className="space-y-4">
@@ -56,18 +65,32 @@ export function Orcamentos() {
         onClose={() => setDeleteOrc(null)}
       />
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between print:hidden">
-        <div className="flex flex-wrap gap-1">
-          {["Todos", ...STATUS].map((s) => (
-            <button key={s} onClick={() => setFilter(s)} className={`rounded-md border px-2.5 py-1 text-xs transition ${filter === s ? "border-[color:var(--gold)] bg-[color:var(--gold)] font-semibold text-[color:var(--navy-deep)]" : "border-[color:var(--navy-border)] text-[color:var(--muted-foreground)] hover:border-[color:var(--gold-dim)]"}`}>
-              {s}
-            </button>
-          ))}
+      <div className="flex flex-col gap-3 print:hidden">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex flex-wrap gap-1">
+            {["Todos", ...STATUS].map((s) => (
+              <button key={s} onClick={() => setFilter(s)} className={`rounded-md border px-2.5 py-1 text-xs transition ${filter === s ? "border-[color:var(--gold)] bg-[color:var(--gold)] font-semibold text-[color:var(--navy-deep)]" : "border-[color:var(--navy-border)] text-[color:var(--muted-foreground)] hover:border-[color:var(--gold-dim)]"}`}>
+                {s}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => setOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--gold)] px-4 py-2 text-sm font-semibold text-[color:var(--navy-deep)] hover:bg-[color:var(--gold-2)] transition whitespace-nowrap shadow-md shadow-[color:var(--gold)]/20 shrink-0">
+            <Plus className="h-4 w-4" />
+            Novo orçamento
+          </button>
         </div>
-        <button onClick={() => setOpen(true)} className="flex items-center justify-center gap-1.5 rounded-lg bg-[color:var(--gold)] px-4 py-2 text-sm font-semibold text-[color:var(--navy-deep)] hover:bg-[color:var(--gold-2)] transition whitespace-nowrap shadow-md shadow-[color:var(--gold)]/20">
-          <Plus className="h-4 w-4" />
-          Novo orçamento
-        </button>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-[color:var(--muted-foreground)]" />
+          </div>
+          <input
+            type="text"
+            placeholder="Pesquisar por número ou cliente..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-9 pr-3 py-2 bg-[color:var(--navy-surface)] border border-[color:var(--navy-border)] rounded-md text-sm text-white focus:border-[color:var(--gold-dim)] outline-none transition"
+          />
+        </div>
       </div>
 
       {/* Tabela desktop */}
