@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUserName } from "@/lib/user";
 import { brl, dateBR, genOrcamentoNumero } from "@/lib/format";
 import { PrintTemplate } from "./PrintTemplate";
+import { ProductDiagram } from "./ProductDiagram";
 import { Modal, Field } from "./Clientes";
 import { Plus, Trash2, Search, X, FileText, BookOpen, ClipboardList, User, Tag } from "lucide-react";
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
@@ -13,7 +14,7 @@ import html2pdf from "html2pdf.js";
 type Produto = { id: string; categoria: string; nome: string; descricao: string | null; unidade: string; preco_m2: number | null; preco_unitario: number | null; espessura: string | null; cor: string | null; num_folhas?: number | null; largura_mm?: number | null; altura_mm?: number | null; margem_lucro?: number | null };
 type Item = { produto_id: string | null; nome: string; descricao: string; quantidade: number; largura_mm: number; altura_mm: number; espessura: string; cor: string; valor_unitario: number; subtotal: number };
 type Orcamento = { id: string; numero: string; cliente_nome: string; status: string; validade: string; total: number; created_at: string; desconto?: number | null; observacoes?: string | null; forma_pagamento?: string | null; criado_por?: string | null; cliente_id?: string | null; };
-type OrcamentoItem = { id: string; nome: string; espessura: string; cor: string; quantidade: number; largura_mm: number; altura_mm: number; subtotal: number };
+type OrcamentoItem = { id: string; nome: string; descricao?: string; espessura: string; cor: string; quantidade: number; largura_mm: number; altura_mm: number; subtotal: number };
 type ClienteOption = { id: string; nome: string };
 
 const STATUS = ["Pendente", "Aprovado", "Em produção", "Concluído", "Cancelado"];
@@ -634,120 +635,13 @@ const LINHA_NOMES: Record<string, string> = {
   linha30: "Linha 30", mega25: "Mega 25", temperado: "Temperado", ecoline: "Ecoline",
 };
 
-type OrcItemNovo = { produto_id?: string | null; nome: string; sub: string; larg: number; alt: number; qtd: number; val: number; espessura?: string; cor?: string };
+type OrcItemNovo = { produto_id?: string | null; nome: string; sub: string; larg: number; alt: number; qtd: number; val: number; espessura?: string; cor?: string; ambiente?: string; cor_ferragem?: string; cor_vidro?: string; cor_aluminio?: string; imagem_url?: string; categoria?: string; num_folhas?: number };
 type ClienteNovo = { id: string; nome: string; telefone?: string | null; endereco_completo?: string | null };
 
 function iniciais(n: string) {
   return n.split(" ").slice(0, 2).map((p) => p[0]).join("").toUpperCase();
 }
 
-function PreviewSVG({ prod, l, a, cor }: { prod: string; l: number; a: number; cor: string }) {
-  const W = 130, H = 100, fr = 3;
-  const sw = Math.round(W * (Math.min(l, 3000) / 3000) * 0.82 + W * 0.18);
-  const sh = Math.round(H * (Math.min(a, 2500) / 2500) * 0.78 + H * 0.18);
-  const ox = Math.round((W - sw) / 2);
-  const oy = Math.round((H - sh) / 2);
-  const fc = cor === "Bronze" ? "#3a2510" : cor === "Preto" ? "#111820" : cor === "Natural" ? "#2a2015" : "#0d1e30";
-  const gc = "#c9a84c";
-  const vc = "rgba(180,220,255,0.15)";
-
-  let inner: React.ReactNode = null;
-  if (prod === "jan2f" || prod === "porta") {
-    // 1 folha FIXA (esquerda) + 1 folha MÓVEL (direita — fecha na parede direita)
-    const hw = Math.round(sw / 2);
-    const my = oy + sh / 2;
-    const ph = 10; // altura do puxador
-    inner = (<>
-      {/* Folha FIXA — esquerda (hachura diagonal para indicar fixo) */}
-      <rect x={ox + fr} y={oy + fr} width={hw - fr - 1} height={sh - fr * 2} fill="rgba(150,170,190,0.08)" stroke={gc} strokeWidth="0.8" rx="1" strokeDasharray="0" />
-      <line x1={ox + fr + 4} y1={oy + fr + 4} x2={ox + hw - 3} y2={oy + sh - fr - 4} stroke={gc} strokeWidth="0.5" opacity="0.3" />
-      <line x1={ox + fr + 4} y1={oy + fr + 4 + (sh - fr * 2) * 0.33} x2={ox + hw - 3} y2={oy + sh - fr - 4 - (sh - fr * 2) * 0.33 + (sh - fr * 2) * 0.33} stroke={gc} strokeWidth="0.5" opacity="0.2" />
-      {/* Folha MÓVEL — direita (puxador na borda direita, fecha na parede) */}
-      <rect x={ox + hw + 1} y={oy + fr} width={hw - fr - 2} height={sh - fr * 2} fill={vc} stroke={gc} strokeWidth="0.8" rx="1" />
-      {/* Puxador da folha móvel — borda direita (junto à parede direita) */}
-      <rect x={ox + sw - fr - 7} y={my - ph} width={3} height={ph * 2} rx="1.5" fill={gc} opacity="0.85" />
-      {/* Seta indicando direção do movimento (→ parede) */}
-      <line x1={ox + hw + 6} y1={my} x2={ox + sw - fr - 10} y2={my} stroke={gc} strokeWidth="0.6" strokeDasharray="2 1.5" opacity="0.35" />
-    </>);
-  } else if (prod === "jan4f") {
-    // 4 folhas: alternado FIXA / MÓVEL / FIXA / MÓVEL (ou F/M/M/F)
-    // 4 folhas: 0=FIXA (parede esq), 1=MÓVEL→centro, 2=MÓVEL→centro, 3=FIXA (parede dir)
-    const qw = Math.round(sw / 4);
-    const my = oy + sh / 2;
-    const ph = 8;
-    // centro onde as duas folhas móveis se encontram
-    const cx = ox + 2 * qw; // x da divisão central
-    inner = (<>
-      {/* Folha 0 — FIXA (parede esquerda) */}
-      <rect x={ox + fr} y={oy + fr} width={qw - 2} height={sh - fr * 2} fill="rgba(150,170,190,0.08)" stroke={gc} strokeWidth="0.8" rx="1" />
-      <line x1={ox + fr + 3} y1={oy + fr + 3} x2={ox + fr + qw - 4} y2={oy + sh - fr - 3} stroke={gc} strokeWidth="0.5" opacity="0.25" />
-      {/* Folha 1 — MÓVEL (fecha no CENTRO — puxador no lado direito, encontra folha 2) */}
-      <rect x={ox + fr + qw} y={oy + fr} width={qw - 2} height={sh - fr * 2} fill={vc} stroke={gc} strokeWidth="0.8" rx="1" />
-      <rect x={cx - 6} y={my - ph} width={3} height={ph * 2} rx="1.5" fill={gc} opacity="0.85" />
-      {/* Folha 2 — MÓVEL (fecha no CENTRO — puxador no lado esquerdo, encontra folha 1) */}
-      <rect x={cx} y={oy + fr} width={qw - 2} height={sh - fr * 2} fill={vc} stroke={gc} strokeWidth="0.8" rx="1" />
-      <rect x={cx + 3} y={my - ph} width={3} height={ph * 2} rx="1.5" fill={gc} opacity="0.85" />
-      {/* Linha de encontro central tracejada */}
-      <line x1={cx} y1={oy + fr + 4} x2={cx} y2={oy + sh - fr - 4} stroke={gc} strokeWidth="0.5" strokeDasharray="2 2" opacity="0.4" />
-      {/* Folha 3 — FIXA (parede direita) */}
-      <rect x={ox + fr + 3 * qw} y={oy + fr} width={qw - fr - 1} height={sh - fr * 2} fill="rgba(150,170,190,0.08)" stroke={gc} strokeWidth="0.8" rx="1" />
-      <line x1={ox + fr + 3 * qw + 3} y1={oy + fr + 3} x2={ox + sw - fr - 3} y2={oy + sh - fr - 3} stroke={gc} strokeWidth="0.5" opacity="0.25" />
-    </>);
-  } else if (prod === "basculante") {
-    inner = (<>
-      <rect x={ox + fr} y={oy + fr} width={sw - fr * 2} height={sh - fr * 2} fill={vc} stroke={gc} strokeWidth="0.8" rx="1" />
-      <line x1={ox + fr + 6} y1={oy + fr + 6} x2={ox + sw - fr - 6} y2={oy + sh - fr - 6} stroke={gc} strokeWidth="0.8" opacity="0.5" />
-      <line x1={ox + sw - fr - 6} y1={oy + fr + 6} x2={ox + fr + 6} y2={oy + sh - fr - 6} stroke={gc} strokeWidth="0.8" opacity="0.5" />
-    </>);
-  } else {
-    inner = <rect x={ox + fr} y={oy + fr} width={sw - fr * 2} height={sh - fr * 2} fill={vc} stroke={gc} strokeWidth="0.8" rx="1" />;
-  }
-
-  return (
-    <svg viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[130px]">
-      <rect x={ox} y={oy} width={sw} height={sh} fill={fc} stroke={gc} strokeWidth="2" rx={fr} />
-      {inner}
-      <text x={W / 2} y={H - 2} textAnchor="middle" fontSize="7" fill="#c9a84c" opacity="0.7">{l}×{a} mm</text>
-    </svg>
-  );
-}
-
-// Infere o tipo de esquadria a partir do produto do catálogo
-// Usa num_folhas (campo explícito) com prioridade, e fallback pelo nome
-function inferirTipoProduto(prod: Produto): string {
-  const cat = prod.categoria?.toLowerCase() ?? "";
-  const n = prod.nome.toLowerCase();
-  // Via num_folhas (mais confiável)
-  if (prod.num_folhas) {
-    const isJanela = cat.includes("janela") || n.includes("janela") || n.includes("jan");
-    const isPorta = cat.includes("porta") || n.includes("porta");
-    if (prod.num_folhas === 4) return "jan4f";
-    if (prod.num_folhas === 2 && isPorta) return "porta";
-    if (prod.num_folhas === 2) return "jan2f";
-  }
-  // Fallback pelo nome
-  if (n.includes("porta") && (n.includes("2f") || n.includes("correr"))) return "porta";
-  if ((n.includes("janela") || n.includes("jan")) && (n.includes("4f") || n.includes("quatro"))) return "jan4f";
-  if ((n.includes("janela") || n.includes("jan")) && (n.includes("2f") || n.includes("dois") || n.includes("correr"))) return "jan2f";
-  if (n.includes("basculante") || n.includes("basc")) return "basculante";
-  if (n.includes("fixo") || n.includes("fix")) return "fixo";
-  if (n.includes("janela") || n.includes("jan")) return "jan2f";
-  if (n.includes("porta")) return "porta";
-  return ""; // produto não é esquadria
-}
-
-// Prévia para produtos do catálogo que não são esquadrias (ícone de caixa)
-function CatalogGenericPreview({ nome }: { nome: string }) {
-  return (
-    <svg viewBox="0 0 130 100" xmlns="http://www.w3.org/2000/svg" className="w-full max-w-[130px]">
-      <rect x="25" y="18" width="80" height="64" rx="4" fill="#0d1e30" stroke="#c9a84c" strokeWidth="2" />
-      <rect x="30" y="23" width="70" height="54" rx="2" fill="rgba(180,220,255,0.08)" stroke="#c9a84c" strokeWidth="0.8" />
-      <line x1="65" y1="23" x2="65" y2="77" stroke="#c9a84c" strokeWidth="0.8" strokeDasharray="3 2" opacity="0.5" />
-      <text x="65" y="56" textAnchor="middle" fontSize="8" fill="#c9a84c" opacity="0.85" fontWeight="600">{nome.slice(0, 16)}</text>
-      <text x="65" y="66" textAnchor="middle" fontSize="6" fill="#8a9baa" opacity="0.7">Produto/Serviço</text>
-    </svg>
-  );
-}
 
 function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; orcamentoExistente?: Orcamento }) {
   const [numero] = useState(orcamentoExistente ? orcamentoExistente.numero : genOrcamentoNumero());
@@ -777,6 +671,8 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const [arremate, setArremate] = useState("Sem arremate");
   const [contraMarco, setContraMarco] = useState("Sem contra marco");
   const [precoCustom, setPrecoCustom] = useState<number | null>(null);
+  const [ambienteInput, setAmbienteInput] = useState("");
+  const [corFerragemInput, setCorFerragemInput] = useState("");
 
   const [itens, setItens] = useState<OrcItemNovo[]>([]);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -882,6 +778,10 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const totalGeral = subtotalTotal * (1 - descontoPerc / 100);
 
   const handleAdd = () => {
+    const metaParts: string[] = [];
+    if (ambienteInput.trim()) metaParts.push(`Ambiente: ${ambienteInput.trim()}`);
+    if (corFerragemInput.trim()) metaParts.push(`Cor ferragem: ${corFerragemInput.trim()}`);
+
     if (origem === "catalogo") {
       if (!prodConfigSelecionado) { alert("Selecione um produto do catálogo."); return; }
       const isM2 = !!prodConfigSelecionado.preco_m2;
@@ -893,7 +793,8 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         `Qtd: ${qtd}`,
         isM2 ? `${alt}×${larg}mm (${((larg / 1000) * (alt / 1000)).toFixed(2)}m²)` : null,
         prodConfigSelecionado.espessura || cor || prodConfigSelecionado.cor ? [prodConfigSelecionado.espessura, cor || prodConfigSelecionado.cor].filter(Boolean).join(" · ") : null,
-        isM2 ? `${brl(precoUnit)}/m²` : `${brl(precoUnit)}/un`
+        isM2 ? `${brl(precoUnit)}/m²` : `${brl(precoUnit)}/un`,
+        ...metaParts
       ].filter(Boolean).join(" • ");
 
       setItens([...itens, {
@@ -906,18 +807,36 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         val: valorCalculado,
         espessura: prodConfigSelecionado.espessura ?? "",
         cor: cor || (prodConfigSelecionado.cor ?? ""),
+        ambiente: ambienteInput.trim() || undefined,
+        cor_ferragem: corFerragemInput.trim() || undefined,
+        categoria: prodConfigSelecionado.categoria || undefined,
       }]);
+      setAmbienteInput("");
+      setCorFerragemInput("");
       return;
     }
 
     const p = PRECO_BASE_PRODUTO[produto];
+    const subSimul = [
+      `Qtd: ${qtd}`,
+      cor ? `${cor}` : null,
+      vidro ? `${vidro}` : null,
+      arremate !== "Sem arremate" ? `${arremate}` : null,
+      contraMarco !== "Sem contra marco" ? `${contraMarco}` : null,
+      ...metaParts
+    ].filter(Boolean).join(" • ");
+
     setItens([...itens, {
       produto_id: null,
       nome: `${p?.nome ?? produto} — ${LINHA_NOMES[linha] ?? linha}`,
-      sub: `Qtd: ${qtd} • ${cor} • ${vidro}${arremate !== "Sem arremate" ? ` • ${arremate}` : ""}${contraMarco !== "Sem contra marco" ? ` • ${contraMarco}` : ""}`,
+      sub: subSimul,
       larg, alt, qtd, val: valorCalculado,
       cor: cor,
+      ambiente: ambienteInput.trim() || undefined,
+      cor_ferragem: corFerragemInput.trim() || undefined,
     }]);
+    setAmbienteInput("");
+    setCorFerragemInput("");
   };
 
   const handleDownloadPdf = () => {
@@ -1463,19 +1382,40 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                   </>
                 )}
 
+                {/* Extras para PDF (Ambiente e Cor ferragem) */}
+                <div className="grid grid-cols-2 gap-2 mt-3 mb-1 pt-2 border-t border-[color:var(--navy-border)]/50">
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[color:var(--muted-foreground)]">Ambiente (ex: Sala, Banheiro)</label>
+                    <input
+                      type="text"
+                      placeholder="ex: Sala, Banheiro..."
+                      value={ambienteInput}
+                      onChange={(e) => setAmbienteInput(e.target.value)}
+                      className={inpCls}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[11px] text-[color:var(--muted-foreground)]">Cor ferragem (ex: Preto, Fosco)</label>
+                    <input
+                      type="text"
+                      placeholder="ex: Preto, Fosco..."
+                      value={corFerragemInput}
+                      onChange={(e) => setCorFerragemInput(e.target.value)}
+                      className={inpCls}
+                    />
+                  </div>
+                </div>
+
                 {/* Preview (mobile only, inline) — aparece em ambos os modos */}
                 <div className="md:hidden mt-4 mb-3 border border-[color:var(--gold)]/20 rounded-lg bg-[color:var(--navy-surface)] p-3 flex items-center justify-center min-h-[90px]">
-                  {origem === "esquadria" ? (
-                    <PreviewSVG prod={produto} l={larg} a={alt} cor={cor} />
-                  ) : prodConfigSelecionado ? (
-                    (() => {
-                      const tipo = inferirTipoProduto(prodConfigSelecionado);
-                      return tipo ? (
-                        <PreviewSVG prod={tipo} l={prodConfigSelecionado.preco_m2 ? larg : 1200} a={prodConfigSelecionado.preco_m2 ? alt : 1000} cor="Branco" />
-                      ) : (
-                        <CatalogGenericPreview nome={prodConfigSelecionado.nome} />
-                      );
-                    })()
+                  {origem === "esquadria" || prodConfigSelecionado ? (
+                    <ProductDiagram item={{
+                      nome: origem === "esquadria" ? (PRECO_BASE_PRODUTO[produto]?.nome || produto) : (prodConfigSelecionado?.nome || ""),
+                      categoria: origem === "esquadria" ? "esquadria" : (prodConfigSelecionado?.categoria || ""),
+                      larg: larg || 1200,
+                      alt: alt || 1000,
+                      cor_aluminio: cor
+                    }} />
                   ) : (
                     <div className="text-[10px] text-[color:var(--muted-foreground)] text-center opacity-60">Selecione um produto<br />para ver a prévia</div>
                   )}
@@ -1566,17 +1506,14 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                   </span>
                 </div>
                 <div className="border border-[color:var(--gold)]/25 rounded-lg bg-[color:var(--navy-surface)] p-3 flex items-center justify-center min-h-[110px]">
-                  {origem === "esquadria" ? (
-                    <PreviewSVG prod={produto} l={larg} a={alt} cor={cor} />
-                  ) : prodConfigSelecionado ? (
-                    (() => {
-                      const tipo = inferirTipoProduto(prodConfigSelecionado);
-                      return tipo ? (
-                        <PreviewSVG prod={tipo} l={prodConfigSelecionado.preco_m2 ? larg : 1200} a={prodConfigSelecionado.preco_m2 ? alt : 1000} cor="Branco" />
-                      ) : (
-                        <CatalogGenericPreview nome={prodConfigSelecionado.nome} />
-                      );
-                    })()
+                  {origem === "esquadria" || prodConfigSelecionado ? (
+                    <ProductDiagram item={{
+                      nome: origem === "esquadria" ? (PRECO_BASE_PRODUTO[produto]?.nome || produto) : (prodConfigSelecionado?.nome || ""),
+                      categoria: origem === "esquadria" ? "esquadria" : (prodConfigSelecionado?.categoria || ""),
+                      larg: larg || 1200,
+                      alt: alt || 1000,
+                      cor_aluminio: cor
+                    }} />
                   ) : (
                     <div className="text-[10px] text-[color:var(--muted-foreground)] text-center opacity-60 px-4">Selecione um produto<br />para ver a prévia</div>
                   )}
@@ -1600,8 +1537,13 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                     <div className="text-[11px] text-[color:var(--muted-foreground)] text-center py-3">Nenhum item adicionado.</div>
                   )}
                   {itens.map((it, i) => (
-                    <div key={i} className="flex justify-between text-[11px]">
-                      <span className="text-[color:var(--muted-foreground)] truncate pr-2">{it.nome.split("—")[0].trim()} ×{it.qtd}</span>
+                    <div key={i} className="flex gap-2 items-center text-[11px] py-1 border-b border-[color:var(--navy-border)]/30 last:border-0">
+                      <div className="w-10 h-10 shrink-0 bg-white/5 rounded-sm p-0.5 flex items-center justify-center">
+                        <ProductDiagram item={it} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[color:var(--muted-foreground)] truncate pr-2">{it.nome.split("—")[0].trim()} ×{it.qtd}</div>
+                      </div>
                       <span className="text-white shrink-0 font-medium">{brl(it.val)}</span>
                     </div>
                   ))}
@@ -2026,7 +1968,12 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
             <tbody>
               {itens.map((it) => (
                 <tr key={it.id} className="border-t border-[color:var(--navy-border)]">
-                  <td className="p-2"><div className="font-medium">{it.nome}</div><div className="text-[10px] text-[color:var(--muted-foreground)]">{it.espessura} {it.cor}</div></td>
+                  <td className="p-2 flex gap-3 items-center">
+                    <div className="w-12 h-10 shrink-0 bg-white/5 rounded-sm p-0.5 flex items-center justify-center">
+                       <ProductDiagram item={{ ...it, sub: it.descricao || "" }} />
+                    </div>
+                    <div><div className="font-medium">{it.nome}</div><div className="text-[10px] text-[color:var(--muted-foreground)]">{it.espessura} {it.cor}</div></div>
+                  </td>
                   <td className="p-2 text-center">{it.quantidade}</td>
                   <td className="p-2 text-center">{it.largura_mm && it.altura_mm ? `${it.altura_mm}×${it.largura_mm}mm` : "—"}</td>
                   <td className="p-2 text-right text-[color:var(--gold-2)]">{brl(it.subtotal)}</td>
@@ -2042,7 +1989,17 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
               {STATUS.map((s) => <option key={s}>{s}</option>)}
             </select>
           </Field>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap justify-end">
+            <button onClick={() => {
+              if (window.innerWidth <= 768) {
+                const element = document.getElementById("print-template-detalhe");
+                if (!element) return;
+                const originalClasses = element.className;
+                element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
+                const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
+                html2pdf().set(opt).from(element).save().then(() => { element.className = originalClasses; });
+              } else { window.print(); }
+            }} className="px-3 py-2 text-sm text-blue-400 hover:text-blue-300">Imprimir PDF</button>
             <button onClick={() => setDeleteConfirm(true)} className="px-3 py-2 text-sm text-red-500 hover:text-red-400">Excluir</button>
             <button onClick={() => onEdit(orc)} className="px-3 py-2 text-sm text-[color:var(--gold-2)]">Editar</button>
             <button onClick={onClose} className="px-3 py-2 text-sm text-[color:var(--muted-foreground)]">Fechar</button>
@@ -2050,6 +2007,18 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
           </div>
         </div>
       </Modal>
+      <PrintTemplate 
+        id="print-template-detalhe"
+        numero={orc.numero}
+        dataEmissao={orc.created_at}
+        validade={orc.validade}
+        cliente={{ nome: orc.cliente_nome }}
+        itens={itens.map(it => ({ ...it, val: it.subtotal, qtd: it.quantidade, sub: it.descricao || "", larg: it.largura_mm, alt: it.altura_mm }))}
+        subtotal={orc.total + (orc.desconto || 0)}
+        descontoPerc={0}
+        total={orc.total}
+        observacoes={orc.observacoes || ""}
+      />
     </>
   );
 }
