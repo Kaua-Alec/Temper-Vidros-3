@@ -366,6 +366,7 @@ export type Database = {
           total: number
           updated_at: string
           validade: string | null
+          assinatura_base64: string | null
         }
         Insert: {
           cliente_id?: string | null
@@ -381,6 +382,7 @@ export type Database = {
           total?: number
           updated_at?: string
           validade?: string | null
+          assinatura_base64?: string | null
         }
         Update: {
           cliente_id?: string | null
@@ -396,6 +398,7 @@ export type Database = {
           total?: number
           updated_at?: string
           validade?: string | null
+          assinatura_base64?: string | null
         }
         Relationships: [
           {

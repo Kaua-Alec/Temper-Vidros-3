@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { Pencil, Plus, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { dateBR } from "@/lib/format";
@@ -198,56 +199,58 @@ export function Clientes() {
         ))}
       </div>
 
-      {open && (
-        <Modal onClose={closeModal} title={editingId ? "Editar cliente" : "Novo cliente"}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <Field label="Nome *">
-              <Input value={form.nome ?? ""} onChange={(v) => setForm({ ...form, nome: v })} />
-            </Field>
-            <Field label="Telefone *">
-              <Input
-                value={form.telefone ?? ""}
-                onChange={(v) => setForm({ ...form, telefone: v })}
-              />
-            </Field>
-            <Field label="E-mail">
-              <Input value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} />
-            </Field>
-            <Field label="CPF/CNPJ">
-              <Input
-                value={form.documento ?? ""}
-                onChange={(v) => setForm({ ...form, documento: v })}
-              />
-            </Field>
-            <Field label="Endereço *" span2>
-              <Input
-                value={form.endereco ?? ""}
-                onChange={(v) => setForm({ ...form, endereco: v })}
-              />
-            </Field>
-            <Field label="Cidade">
-              <Input value={form.cidade ?? ""} onChange={(v) => setForm({ ...form, cidade: v })} />
-            </Field>
-            <Field label="Observações" span2>
-              <Input
-                value={form.observacoes ?? ""}
-                onChange={(v) => setForm({ ...form, observacoes: v })}
-              />
-            </Field>
-          </div>
-          <div className="mt-4 flex justify-end gap-2">
-            <button onClick={closeModal} className="px-3 py-2 text-sm text-muted-foreground">
-              Cancelar
-            </button>
-            <button
-              onClick={save}
-              className="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-navy-deep hover:bg-gold-2"
-            >
-              {editingId ? "Atualizar" : "Salvar"}
-            </button>
-          </div>
-        </Modal>
-      )}
+      <AnimatePresence>
+        {open && (
+          <Modal onClose={closeModal} title={editingId ? "Editar cliente" : "Novo cliente"}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Field label="Nome *">
+                <Input value={form.nome ?? ""} onChange={(v) => setForm({ ...form, nome: v })} />
+              </Field>
+              <Field label="Telefone *">
+                <Input
+                  value={form.telefone ?? ""}
+                  onChange={(v) => setForm({ ...form, telefone: v })}
+                />
+              </Field>
+              <Field label="E-mail">
+                <Input value={form.email ?? ""} onChange={(v) => setForm({ ...form, email: v })} />
+              </Field>
+              <Field label="CPF/CNPJ">
+                <Input
+                  value={form.documento ?? ""}
+                  onChange={(v) => setForm({ ...form, documento: v })}
+                />
+              </Field>
+              <Field label="Endereço *" span2>
+                <Input
+                  value={form.endereco ?? ""}
+                  onChange={(v) => setForm({ ...form, endereco: v })}
+                />
+              </Field>
+              <Field label="Cidade">
+                <Input value={form.cidade ?? ""} onChange={(v) => setForm({ ...form, cidade: v })} />
+              </Field>
+              <Field label="Observações" span2>
+                <Input
+                  value={form.observacoes ?? ""}
+                  onChange={(v) => setForm({ ...form, observacoes: v })}
+                />
+              </Field>
+            </div>
+            <div className="mt-4 flex justify-end gap-2">
+              <button onClick={closeModal} className="px-3 py-2 text-sm text-muted-foreground">
+                Cancelar
+              </button>
+              <button
+                onClick={save}
+                className="rounded-md bg-gold px-4 py-2 text-sm font-semibold text-navy-deep hover:bg-gold-2"
+              >
+                {editingId ? "Atualizar" : "Salvar"}
+              </button>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -264,11 +267,19 @@ export function Modal({
   wide?: boolean;
 }) {
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
       onClick={onClose}
     >
-      <div
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        transition={{ type: "spring", bounce: 0.2, duration: 0.4 }}
         onClick={(e) => e.stopPropagation()}
         className={`w-full ${wide ? "max-w-5xl" : "max-w-lg"} max-h-[90vh] overflow-y-auto rounded-lg border border-navy-border bg-navy-card p-5 shadow-2xl`}
       >
@@ -279,8 +290,8 @@ export function Modal({
           </button>
         </div>
         {children}
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 

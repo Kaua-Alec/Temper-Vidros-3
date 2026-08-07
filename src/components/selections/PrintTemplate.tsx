@@ -39,6 +39,7 @@ type PrintTemplateProps = {
   observacoes: string;
   id?: string;
   ocultarValores?: boolean;
+  assinatura?: string | null;
 };
 
 const brl = (n: number) =>
@@ -91,6 +92,7 @@ export function PrintTemplate({
   observacoes,
   id = "print-template",
   ocultarValores = false,
+  assinatura = null,
 }: PrintTemplateProps) {
   // Try to parse 'validade' which might be '15' to '15 DIAS'
   const validadeDias = validade.includes("DIA") ? validade : `${validade} DIAS`;
@@ -234,6 +236,17 @@ export function PrintTemplate({
                         <span>{brl(total)}</span>
                       </div>
                     </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Assinatura */}
+              {assinatura && (
+                <div className="mt-8 pt-4 flex flex-col items-center break-inside-avoid">
+                  <div className="text-[13px] text-gray-800 mb-2">De acordo:</div>
+                  <img src={assinatura} alt="Assinatura do Cliente" className="h-20 object-contain mix-blend-multiply" />
+                  <div className="w-64 border-t border-gray-400 mt-2 text-center text-xs text-gray-600 pt-1">
+                    {cliente?.nome}
                   </div>
                 </div>
               )}

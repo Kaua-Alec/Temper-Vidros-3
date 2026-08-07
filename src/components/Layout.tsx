@@ -1,7 +1,9 @@
 import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { getUserName, clearUserName } from "@/lib/user";
 import { downloadAllDataZip } from "@/lib/download-zip";
 import { ChatDrawer } from "./ChatDrawer";
+import { ThemeToggle } from "./ThemeToggle";
 import {
   LayoutDashboard, Users, FileText, Wrench, Calendar,
   DollarSign, Package, Settings, Download, LogOut, Menu, X,
@@ -144,6 +146,7 @@ export function Layout({
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
+            <ThemeToggle />
             <button
               onClick={doDownload}
               disabled={downloading}
@@ -155,7 +158,19 @@ export function Layout({
             </button>
           </div>
         </header>
-        <div className="flex-1 print:flex-none print:block overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0 print:bg-white">{children}</div>
+        <div className="flex-1 print:flex-none print:block overflow-x-hidden overflow-y-auto p-4 sm:p-6 print:overflow-visible print:p-0 print:bg-white relative">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={section}
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -15 }}
+              transition={{ duration: 0.2 }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
       </main>
 
       <div className="print:hidden">
