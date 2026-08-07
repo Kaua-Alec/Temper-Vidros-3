@@ -38,6 +38,7 @@ type PrintTemplateProps = {
   total: number;
   observacoes: string;
   id?: string;
+  ocultarValores?: boolean;
 };
 
 const brl = (n: number) =>
@@ -89,6 +90,7 @@ export function PrintTemplate({
   total,
   observacoes,
   id = "print-template",
+  ocultarValores = false,
 }: PrintTemplateProps) {
   // Try to parse 'validade' which might be '15' to '15 DIAS'
   const validadeDias = validade.includes("DIA") ? validade : `${validade} DIAS`;
@@ -186,8 +188,8 @@ export function PrintTemplate({
                             <th className="py-1.5 font-bold">Largura</th>
                             <th className="py-1.5 font-bold">Altura</th>
                             <th className="py-1.5 font-bold">Espessura Vidro</th>
-                            <th className="py-1.5 font-bold">V. Unitário</th>
-                            <th className="py-1.5 font-bold">Total</th>
+                            {!ocultarValores && <th className="py-1.5 font-bold">V. Unitário</th>}
+                            {!ocultarValores && <th className="py-1.5 font-bold">Total</th>}
                           </tr>
                         </thead>
                         <tbody className="text-[13px] text-gray-900 font-medium">
@@ -197,8 +199,8 @@ export function PrintTemplate({
                             <td className="py-1.5">{it.larg > 0 ? it.larg : "-"}</td>
                             <td className="py-1.5">{it.alt > 0 ? it.alt : "-"}</td>
                             <td className="py-1.5">{it.espessura || "-"}</td>
-                            <td className="py-1.5">{brl(vUnitario)}</td>
-                            <td className="py-1.5">{brl(it.val)}</td>
+                            {!ocultarValores && <td className="py-1.5">{brl(vUnitario)}</td>}
+                            {!ocultarValores && <td className="py-1.5">{brl(it.val)}</td>}
                           </tr>
                         </tbody>
                       </table>
@@ -208,31 +210,33 @@ export function PrintTemplate({
               </div>
 
               {/* Totals */}
-              <div className="border border-gray-300 rounded-sm mb-6 bg-gray-50/50 break-inside-avoid">
-                <div className="bg-[#E6E6E6] border-b border-gray-300 px-3 py-1.5">
-                  <h3 className="font-medium text-gray-800 text-sm">Valores Finais:</h3>
-                </div>
-                <div className="p-3 text-[13px] text-gray-800 flex">
-                  <div className="flex-1 flex gap-12">
-                    <div>Engenharias:</div>
-                    <div>{itens.reduce((acc, it) => acc + it.qtd, 0)} unid.</div>
+              {!ocultarValores && (
+                <div className="border border-gray-300 rounded-sm mb-6 bg-gray-50/50 break-inside-avoid">
+                  <div className="bg-[#E6E6E6] border-b border-gray-300 px-3 py-1.5">
+                    <h3 className="font-medium text-gray-800 text-sm">Valores Finais:</h3>
                   </div>
-                  <div className="w-[300px] flex flex-col gap-1">
-                    <div className="flex justify-between">
-                      <span>Sub Total:</span>
-                      <span>{brl(subtotal)}</span>
+                  <div className="p-3 text-[13px] text-gray-800 flex">
+                    <div className="flex-1 flex gap-12">
+                      <div>Engenharias:</div>
+                      <div>{itens.reduce((acc, it) => acc + it.qtd, 0)} unid.</div>
                     </div>
-                    <div className="flex justify-between">
-                      <span>Desconto:</span>
-                      <span>{descontoPerc > 0 ? `${descontoPerc}%` : "0"}</span>
-                    </div>
-                    <div className="flex justify-between font-semibold mt-1">
-                      <span>Total:</span>
-                      <span>{brl(total)}</span>
+                    <div className="w-[300px] flex flex-col gap-1">
+                      <div className="flex justify-between">
+                        <span>Sub Total:</span>
+                        <span>{brl(subtotal)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Desconto:</span>
+                        <span>{descontoPerc > 0 ? `${descontoPerc}%` : "0"}</span>
+                      </div>
+                      <div className="flex justify-between font-semibold mt-1">
+                        <span>Total:</span>
+                        <span>{brl(total)}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
 
               {/* Observations */}
               {observacoes && (

@@ -669,6 +669,7 @@ function iniciais(n: string) {
 function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; orcamentoExistente?: Orcamento }) {
   const [numero] = useState(orcamentoExistente ? orcamentoExistente.numero : genOrcamentoNumero());
   const [statusOrc, setStatusOrc] = useState(orcamentoExistente ? orcamentoExistente.status : "Pendente");
+  const [ocultarValores, setOcultarValores] = useState(false);
 
   // Cliente
   const [clientes, setClientes] = useState<ClienteNovo[]>([]);
@@ -1018,6 +1019,10 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <label className="hidden xs:flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[11px] xs:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
+              <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
+              Ocultar Preços
+            </label>
             <button type="button" onClick={handleDownloadPdf} className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] xs:text-[12px] transition">
               <FileText className="h-3.5 w-3.5" /> PDF
             </button>
@@ -1649,6 +1654,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       descontoPerc={descontoPerc}
       total={totalGeral}
       observacoes={obs}
+      ocultarValores={ocultarValores}
     />
   </>
   );
@@ -1933,6 +1939,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
   const [itens, setItens] = useState<OrcamentoItem[]>([]);
   const [status, setStatus] = useState(orc.status);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [ocultarValores, setOcultarValores] = useState(false);
 
   useEffect(() => {
     supabase.from("orcamento_itens").select("*").eq("orcamento_id", orc.id).then(({ data }) => setItens((data as OrcamentoItem[] | null) ?? []));
@@ -2012,7 +2019,11 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
               {STATUS.map((s) => <option key={s}>{s}</option>)}
             </select>
           </Field>
-          <div className="flex gap-2 flex-wrap justify-end">
+          <div className="flex gap-2 flex-wrap justify-end items-center">
+            <label className="flex items-center gap-1.5 cursor-pointer mr-2 text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
+              <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
+              Ocultar Preços (PDF)
+            </label>
             <button onClick={() => {
               if (window.innerWidth <= 768) {
                 const element = document.getElementById("print-template-detalhe");
@@ -2041,6 +2052,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
         descontoPerc={0}
         total={orc.total}
         observacoes={orc.observacoes || ""}
+        ocultarValores={ocultarValores}
       />
     </>
   );
