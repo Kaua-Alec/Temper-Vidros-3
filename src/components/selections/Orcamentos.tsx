@@ -1019,11 +1019,12 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
-            <label className="hidden xs:flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[11px] xs:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
+            <label className="flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[10px] sm:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
               <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
-              Ocultar Preços
+              <span className="hidden sm:inline">Ocultar Preços</span>
+              <span className="sm:hidden">Sem Preço</span>
             </label>
-            <button type="button" onClick={handleDownloadPdf} className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] xs:text-[12px] transition">
+            <button type="button" onClick={handleDownloadPdf} className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] transition">
               <FileText className="h-3.5 w-3.5" /> PDF
             </button>
             <button type="button" className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] xs:text-[12px] transition">
