@@ -14,7 +14,7 @@ import html2pdf from "html2pdf.js";
 
 type Produto = { id: string; categoria: string; nome: string; descricao: string | null; unidade: string; preco_m2: number | null; preco_unitario: number | null; espessura: string | null; cor: string | null; num_folhas?: number | null; largura_mm?: number | null; altura_mm?: number | null; margem_lucro?: number | null };
 type Item = { produto_id: string | null; nome: string; descricao: string; quantidade: number; largura_mm: number; altura_mm: number; espessura: string; cor: string; valor_unitario: number; subtotal: number };
-type Orcamento = { id: string; numero: string; cliente_nome: string; status: string; validade: string; total: number; created_at: string; desconto?: number | null; observacoes?: string | null; forma_pagamento?: string | null; criado_por?: string | null; cliente_id?: string | null; };
+type Orcamento = { id: string; numero: string; cliente_nome: string; status: string; validade: string; total: number; created_at: string; desconto?: number | null; observacoes?: string | null; forma_pagamento?: string | null; criado_por?: string | null; cliente_id?: string | null; assinatura_base64?: string | null; };
 type OrcamentoItem = { id: string; nome: string; descricao?: string; espessura: string; cor: string; quantidade: number; largura_mm: number; altura_mm: number; subtotal: number };
 type ClienteOption = { id: string; nome: string };
 
@@ -875,8 +875,8 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       const opt = {
         margin:       0.2,
         filename:     `Orcamento_${numero || 'SF'}.pdf`,
-        image:        { type: 'jpeg' as const, quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
+        image:        { type: 'jpeg' as const, quality: 0.85 },
+        html2canvas:  { scale: 1, useCORS: true },
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' as const }
       };
       
@@ -2074,7 +2074,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
                 if (!element) return;
                 const originalClasses = element.className;
                 element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
-                const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
+                const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.85 }, html2canvas: { scale: 1, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
                 html2pdf().set(opt).from(element).save().then(() => { element.className = originalClasses; });
               } else { window.print(); }
             }} className="px-3 py-2 text-sm text-blue-400 hover:text-blue-300">Imprimir PDF</button>
