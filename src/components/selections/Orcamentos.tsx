@@ -9,6 +9,7 @@ import { Plus, Trash2, Search, X, FileText, BookOpen, ClipboardList, User, Tag, 
 import { ConfirmDeleteModal } from "../ConfirmDeleteModal";
 import { ClienteSelect } from "../ClienteSelect";
 import { SignaturePadModal } from "./SignaturePad";
+import { AnimatePresence } from "framer-motion";
 // @ts-ignore
 import html2pdf from "html2pdf.js";
 
@@ -672,6 +673,8 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const [statusOrc, setStatusOrc] = useState(orcamentoExistente ? orcamentoExistente.status : "Pendente");
   const [ocultarValores, setOcultarValores] = useState(false);
   const [custoEstimado, setCustoEstimado] = useState<number>(0);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfReadyUrl, setPdfReadyUrl] = useState<{ url: string, name: string } | null>(null);
 
   // Cliente
   const [clientes, setClientes] = useState<ClienteNovo[]>([]);
@@ -869,6 +872,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
     if (window.innerWidth <= 768) {
       const element = document.getElementById("print-template");
       if (!element) return;
+      setIsGeneratingPdf(true);
       const originalClasses = element.className;
       element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
       
@@ -880,8 +884,20 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' as const }
       };
       
-      html2pdf().set(opt).from(element).save().then(() => {
+      html2pdf().set(opt).from(element).output('blob').then((pdfBlob: Blob) => {
         element.className = originalClasses;
+        setIsGeneratingPdf(false);
+        
+        const pdfName = `Orcamento_${numero || 'SF'}.pdf`;
+        const file = new File([pdfBlob], pdfName, { type: 'application/pdf' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          navigator.share({ files: [file], title: pdfName }).catch(() => {
+            setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
+          });
+        } else {
+          setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
+        }
       });
     } else {
       window.print();
@@ -1024,10 +1040,9 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
             <label className="flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[10px] sm:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
               <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
               <span className="hidden sm:inline">Ocultar Preços</span>
-              <span className="sm:hidden">Sem Preço</span>
             </label>
-            <button type="button" onClick={handleDownloadPdf} className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] transition">
-              <FileText className="h-3.5 w-3.5" /> PDF
+            <button type="button" onClick={handleDownloadPdf} disabled={isGeneratingPdf} className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] sm:text-[12px] disabled:opacity-50 transition">
+              <FileText className="h-3.5 w-3.5" /> {isGeneratingPdf ? "Gerando..." : "PDF"}
             </button>
             <button type="button" className="flex items-center gap-1 border border-[color:var(--navy-border)] hover:border-[color:var(--gold-dim)] hover:text-[color:var(--gold-2)] text-[color:var(--muted-foreground)] px-2.5 py-1.5 rounded-lg text-[11px] xs:text-[12px] transition">
               <Tag className="h-3.5 w-3.5" /> Enviar
@@ -1672,6 +1687,18 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         </div>
       </div>
     </div>
+    <AnimatePresence>
+      {pdfReadyUrl && (
+        <Modal onClose={() => setPdfReadyUrl(null)} title="PDF Gerado">
+          <div className="flex flex-col items-center p-4 gap-6">
+            <p className="text-sm text-center text-[color:var(--muted-foreground)]">O PDF do orçamento foi gerado com sucesso! Clique no botão abaixo para salvá-lo no seu dispositivo.</p>
+            <a href={pdfReadyUrl.url} download={pdfReadyUrl.name} className="flex items-center gap-2 bg-[color:var(--gold)] text-[color:var(--navy-deep)] px-6 py-3 rounded-xl font-bold hover:bg-[color:var(--gold-2)] transition">
+              <FileText className="h-5 w-5" /> Baixar PDF
+            </a>
+          </div>
+        </Modal>
+      )}
+    </AnimatePresence>
     <PrintTemplate 
       numero={numero}
       dataEmissao={new Date().toISOString()}
@@ -1970,6 +1997,8 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
   const [ocultarValores, setOcultarValores] = useState(false);
   const [sigOpen, setSigOpen] = useState(false);
   const [assinatura, setAssinatura] = useState<string | null>(orc.assinatura_base64 || null);
+  const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [pdfReadyUrl, setPdfReadyUrl] = useState<{ url: string, name: string } | null>(null);
 
   useEffect(() => {
     supabase.from("orcamento_itens").select("*").eq("orcamento_id", orc.id).then(({ data }) => setItens((data as OrcamentoItem[] | null) ?? []));
@@ -2004,6 +2033,18 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
 
   return (
     <>
+      <AnimatePresence>
+        {pdfReadyUrl && (
+          <Modal onClose={() => setPdfReadyUrl(null)} title="PDF Gerado">
+            <div className="flex flex-col items-center p-4 gap-6">
+              <p className="text-sm text-center text-[color:var(--muted-foreground)]">O PDF do orçamento foi gerado com sucesso! Clique no botão abaixo para salvá-lo no seu dispositivo.</p>
+              <a href={pdfReadyUrl.url} download={pdfReadyUrl.name} className="flex items-center gap-2 bg-[color:var(--gold)] text-[color:var(--navy-deep)] px-6 py-3 rounded-xl font-bold hover:bg-[color:var(--gold-2)] transition">
+                <FileText className="h-5 w-5" /> Baixar PDF
+              </a>
+            </div>
+          </Modal>
+        )}
+      </AnimatePresence>
       <ConfirmDeleteModal
         open={deleteConfirm}
         title="Excluir Orçamento?"
@@ -2072,12 +2113,30 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
               if (window.innerWidth <= 768) {
                 const element = document.getElementById("print-template-detalhe");
                 if (!element) return;
+                setIsGeneratingPdf(true);
                 const originalClasses = element.className;
                 element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
                 const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.85 }, html2canvas: { scale: 1, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
-                html2pdf().set(opt).from(element).save().then(() => { element.className = originalClasses; });
+                
+                html2pdf().set(opt).from(element).output('blob').then((pdfBlob: Blob) => {
+                  element.className = originalClasses;
+                  setIsGeneratingPdf(false);
+                  
+                  const pdfName = `Orcamento_${orc.numero}.pdf`;
+                  const file = new File([pdfBlob], pdfName, { type: 'application/pdf' });
+                  
+                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    navigator.share({ files: [file], title: pdfName }).catch(() => {
+                      setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
+                    });
+                  } else {
+                    setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
+                  }
+                });
               } else { window.print(); }
-            }} className="px-3 py-2 text-sm text-blue-400 hover:text-blue-300">Imprimir PDF</button>
+            }} disabled={isGeneratingPdf} className="px-3 py-2 text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 transition">
+              {isGeneratingPdf ? "Gerando PDF..." : "Imprimir PDF"}
+            </button>
             <button onClick={() => setDeleteConfirm(true)} className="px-3 py-2 text-sm text-red-500 hover:text-red-400">Excluir</button>
             <button onClick={() => onEdit(orc)} className="px-3 py-2 text-sm text-[color:var(--gold-2)]">Editar</button>
             <button onClick={onClose} className="px-3 py-2 text-sm text-[color:var(--muted-foreground)]">Fechar</button>
