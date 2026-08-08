@@ -105,7 +105,7 @@ export function PrintTemplate({
   }
 
   return (
-    <div id={id} className="hidden print:block bg-white text-black font-sans min-h-screen html2pdf-container">
+    <div id={id} className="hidden print:block bg-[#ffffff] text-[#000000] font-sans min-h-screen html2pdf-container">
       <table className="w-full">
         <thead className="table-header-group">
           <tr>
@@ -116,7 +116,7 @@ export function PrintTemplate({
                   <div className="w-32 h-32 flex items-center justify-center shrink-0">
                     <img src="/logo.jpg" alt="Temper Vidros SF Logo" className="max-w-full max-h-full object-contain" />
                   </div>
-                  <div className="flex-1 mt-1 text-[13px] leading-relaxed text-gray-800">
+                  <div className="flex-1 mt-1 text-[13px] leading-relaxed text-[#1f2937]">
                     <h1 className="text-lg font-bold mb-2">TEMPER VIDROS SF</h1>
                     <p>R. Hermita Mendonça, 757, Bairro Jardim Regalito , São Francisco, MG.</p>
                     <p>Tempervidrosv@gmail.com</p>
@@ -125,10 +125,10 @@ export function PrintTemplate({
                 </div>
                 
                 {/* Client Name & Address Details */}
-                <div className="mb-2 border-b border-gray-300 pb-2">
-                  <h2 className="text-base font-bold uppercase text-gray-900">{cliente?.nome || "CLIENTE NÃO INFORMADO"}</h2>
+                <div className="mb-2 border-b border-[#d1d5db] pb-2">
+                  <h2 className="text-base font-bold uppercase text-[#111827]">{cliente?.nome || "CLIENTE NÃO INFORMADO"}</h2>
                   {(cliente?.telefone || cliente?.endereco || cliente?.endereco_completo) && (
-                    <div className="text-[12px] text-gray-700 mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
+                    <div className="text-[12px] text-[#374151] mt-1 flex flex-wrap gap-x-4 gap-y-0.5">
                       {cliente?.telefone && <div><span className="font-semibold">Telefone:</span> {cliente.telefone}</div>}
                       {(cliente?.endereco || cliente?.endereco_completo) && (
                         <div><span className="font-semibold">Endereço:</span> {cliente.endereco || cliente.endereco_completo}</div>
@@ -144,7 +144,7 @@ export function PrintTemplate({
           <tr>
             <td className="px-8 pb-8">
               {/* Metadata Bar */}
-              <div className="bg-[#E6E6E6] border border-gray-300 py-1.5 px-4 flex justify-between items-center text-[11px] mb-4 font-medium uppercase text-gray-800">
+              <div className="bg-[#E6E6E6] border border-[#d1d5db] py-1.5 px-4 flex justify-between items-center text-[11px] mb-4 font-medium uppercase text-[#1f2937]">
                 <div><span className="font-bold">Nº ORÇAMENTO:</span> {numero || "N/A"}</div>
                 <div><span className="font-bold">DATA ORÇAMENTO:</span> {dataOrc}</div>
                 <div><span className="font-bold">VALIDADE:</span> {validadeDias}</div>
@@ -158,16 +158,16 @@ export function PrintTemplate({
                   const { ambiente, corFerragem, corVidro, corAluminio, obsItem } = parseItemDetails(it);
 
                   return (
-                    <div key={idx} className="border border-gray-300 rounded-sm break-inside-avoid">
+                    <div key={idx} className="border border-[#d1d5db] rounded-sm break-inside-avoid">
                       <div className="flex p-3 gap-6 items-center min-h-[110px]">
                         {/* Item Technical SVG / Custom Image */}
-                        <div className="w-48 h-32 bg-white border border-gray-200 flex items-center justify-center shrink-0 p-1 rounded-sm">
+                        <div className="w-48 h-32 bg-[#ffffff] border border-[#e5e7eb] flex items-center justify-center shrink-0 p-1 rounded-sm">
                           <ProductDiagram item={it} />
                         </div>
                         
                         {/* Item Text Details matching user screenshot */}
-                        <div className="flex-1 text-[13px] text-gray-700 leading-snug self-start pt-2">
-                          <div className="text-[15px] font-medium mb-3 text-gray-900">{it.nome}</div>
+                        <div className="flex-1 text-[13px] text-[#374151] leading-snug self-start pt-2">
+                          <div className="text-[15px] font-medium mb-3 text-[#111827]">{it.nome}</div>
                           <div className="grid grid-cols-2 gap-y-2 gap-x-4">
                             <div>Ambiente: {ambiente || "Não especificado"}</div>
                             <div>Cor vidro: {corVidro || "Incolor"}</div>
@@ -182,9 +182,9 @@ export function PrintTemplate({
                         </div>
                       </div>
 
-                      <table className="w-full text-center text-[11px] border-t border-gray-300 mt-1">
+                      <table className="w-full text-center text-[11px] border-t border-[#d1d5db] mt-1">
                         <thead>
-                          <tr className="bg-gray-50 text-gray-600 font-bold uppercase border-b border-gray-300">
+                          <tr className="bg-[#f9fafb] text-[#4b5563] font-bold uppercase border-b border-[#d1d5db]">
                             <th className="py-1.5 font-bold">Item</th>
                             <th className="py-1.5 font-bold">Qtde</th>
                             <th className="py-1.5 font-bold">Largura</th>
@@ -194,7 +194,7 @@ export function PrintTemplate({
                             {!ocultarValores && <th className="py-1.5 font-bold">Total</th>}
                           </tr>
                         </thead>
-                        <tbody className="text-[13px] text-gray-900 font-medium">
+                        <tbody className="text-[13px] text-[#111827] font-medium">
                           <tr>
                             <td className="py-1.5">{idx + 1}</td>
                             <td className="py-1.5">{it.qtd}</td>
@@ -213,11 +213,11 @@ export function PrintTemplate({
 
               {/* Totals */}
               {!ocultarValores && (
-                <div className="border border-gray-300 rounded-sm mb-6 bg-gray-50/50 break-inside-avoid">
-                  <div className="bg-[#E6E6E6] border-b border-gray-300 px-3 py-1.5">
-                    <h3 className="font-medium text-gray-800 text-sm">Valores Finais:</h3>
+                <div className="border border-[#d1d5db] rounded-sm mb-6 bg-[#f9fafb80] break-inside-avoid">
+                  <div className="bg-[#E6E6E6] border-b border-[#d1d5db] px-3 py-1.5">
+                    <h3 className="font-medium text-[#1f2937] text-sm">Valores Finais:</h3>
                   </div>
-                  <div className="p-3 text-[13px] text-gray-800 flex">
+                  <div className="p-3 text-[13px] text-[#1f2937] flex">
                     <div className="flex-1 flex gap-12">
                       <div>Engenharias:</div>
                       <div>{itens.reduce((acc, it) => acc + it.qtd, 0)} unid.</div>
@@ -242,10 +242,10 @@ export function PrintTemplate({
 
               {/* Assinatura */}
               {assinatura && (
-                <div className="mt-8 pt-4 flex flex-col items-center break-inside-avoid bg-white">
-                  <div className="text-[13px] text-gray-800 mb-2">De acordo:</div>
-                  <img src={assinatura} alt="Assinatura do Cliente" className="h-20 object-contain bg-white" crossOrigin="anonymous" />
-                  <div className="w-64 border-t border-gray-400 mt-2 text-center text-xs text-gray-600 pt-1">
+                <div className="mt-8 pt-4 flex flex-col items-center break-inside-avoid bg-[#ffffff]">
+                  <div className="text-[13px] text-[#1f2937] mb-2">De acordo:</div>
+                  <img src={assinatura} alt="Assinatura do Cliente" className="h-20 object-contain bg-[#ffffff]" crossOrigin="anonymous" />
+                  <div className="w-64 border-t border-[#9ca3af] mt-2 text-center text-xs text-[#4b5563] pt-1">
                     {cliente?.nome}
                   </div>
                 </div>
@@ -254,13 +254,13 @@ export function PrintTemplate({
               {/* Observations */}
               {observacoes && (
                 <div className="mb-12 break-inside-avoid">
-                  <h3 className="font-bold text-gray-900 text-sm mb-2 uppercase">Observação:</h3>
-                  <p className="text-[13px] text-gray-800 whitespace-pre-wrap">{observacoes}</p>
+                  <h3 className="font-bold text-[#111827] text-sm mb-2 uppercase">Observação:</h3>
+                  <p className="text-[13px] text-[#1f2937] whitespace-pre-wrap">{observacoes}</p>
                 </div>
               )}
 
               {/* Signatures */}
-              <div className="flex justify-between items-end mt-16 px-8 text-center text-[12px] font-bold text-gray-900 break-inside-avoid">
+              <div className="flex justify-between items-end mt-16 px-8 text-center text-[12px] font-bold text-[#111827] break-inside-avoid">
                 <div className="w-64">
                   <div className="mb-2 relative h-12">
                     <svg className="absolute bottom-2 left-1/2 -ml-12 w-24 h-12 opacity-80" viewBox="0 0 100 50">
@@ -268,11 +268,11 @@ export function PrintTemplate({
                       <path d="M 20 40 Q 40 10 60 40 T 80 30" stroke="black" strokeWidth="2" fill="none" />
                     </svg>
                   </div>
-                  <div className="border-t border-gray-800 pt-2 uppercase">Contratado</div>
+                  <div className="border-t border-[#1f2937] pt-2 uppercase">Contratado</div>
                   <div className="mt-2 font-normal">TEMPER VIDROS SF</div>
                 </div>
                 <div className="w-64">
-                  <div className="border-t border-gray-800 pt-2 uppercase">Contratante</div>
+                  <div className="border-t border-[#1f2937] pt-2 uppercase">Contratante</div>
                   <div className="mt-2 font-normal">{cliente?.nome || "______________________"}</div>
                 </div>
               </div>
