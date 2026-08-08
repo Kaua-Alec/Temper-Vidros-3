@@ -884,20 +884,14 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
         jsPDF:        { unit: 'in', format: 'a4', orientation: 'portrait' as const }
       };
       
-      html2pdf().set(opt).from(element).output('blob').then((pdfBlob: Blob) => {
+      html2pdf().set(opt).from(element).save().then(() => {
         element.className = originalClasses;
         setIsGeneratingPdf(false);
-        
-        const pdfName = `Orcamento_${numero || 'SF'}.pdf`;
-        const file = new File([pdfBlob], pdfName, { type: 'application/pdf' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          navigator.share({ files: [file], title: pdfName }).catch(() => {
-            setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
-          });
-        } else {
-          setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
-        }
+      }).catch((err: any) => {
+        console.error(err);
+        alert("Erro ao gerar PDF: " + err);
+        element.className = originalClasses;
+        setIsGeneratingPdf(false);
       });
     } else {
       window.print();
@@ -2028,7 +2022,10 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
 
   const handleSaveSignature = async (base64: string) => {
     setAssinatura(base64);
-    await supabase.from("orcamentos").update({ assinatura_base64: base64 }).eq("id", orc.id);
+    const { error } = await supabase.from("orcamentos").update({ assinatura_base64: base64 }).eq("id", orc.id);
+    if (error) {
+      alert("ATENÇÃO: A assinatura não foi salva no banco! Você precisa rodar o código SQL no painel do Supabase para criar a coluna de assinatura. Erro técnico: " + error.message);
+    }
   };
 
   return (
@@ -2118,20 +2115,14 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
                 element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
                 const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.85 }, html2canvas: { scale: 1, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
                 
-                html2pdf().set(opt).from(element).output('blob').then((pdfBlob: Blob) => {
+                html2pdf().set(opt).from(element).save().then(() => {
                   element.className = originalClasses;
                   setIsGeneratingPdf(false);
-                  
-                  const pdfName = `Orcamento_${orc.numero}.pdf`;
-                  const file = new File([pdfBlob], pdfName, { type: 'application/pdf' });
-                  
-                  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-                    navigator.share({ files: [file], title: pdfName }).catch(() => {
-                      setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
-                    });
-                  } else {
-                    setPdfReadyUrl({ url: URL.createObjectURL(pdfBlob), name: pdfName });
-                  }
+                }).catch((err: any) => {
+                  console.error(err);
+                  alert("Erro ao gerar PDF: " + err);
+                  element.className = originalClasses;
+                  setIsGeneratingPdf(false);
                 });
               } else { window.print(); }
             }} disabled={isGeneratingPdf} className="px-3 py-2 text-sm text-blue-400 hover:text-blue-300 disabled:opacity-50 transition">
