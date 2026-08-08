@@ -874,7 +874,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       if (!element) return;
       setIsGeneratingPdf(true);
       const originalClasses = element.className;
-      element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
+      element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] fixed top-0 left-0 z-[-50]";
       
       const opt = {
         margin:       0.2,
@@ -2112,7 +2112,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
                 if (!element) return;
                 setIsGeneratingPdf(true);
                 const originalClasses = element.className;
-                element.className = "bg-white text-black font-sans min-h-screen block w-[800px] absolute top-[-9999px] left-[-9999px] z-[-1]";
+                element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] fixed top-0 left-0 z-[-50]";
                 const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.85 }, html2canvas: { scale: 1, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
                 
                 html2pdf().set(opt).from(element).save().then(() => {

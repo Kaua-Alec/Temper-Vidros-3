@@ -244,7 +244,7 @@ export function PrintTemplate({
               {assinatura && (
                 <div className="mt-8 pt-4 flex flex-col items-center break-inside-avoid bg-[#ffffff]">
                   <div className="text-[13px] text-[#1f2937] mb-2">De acordo:</div>
-                  <img src={assinatura} alt="Assinatura do Cliente" className="h-20 object-contain bg-[#ffffff]" crossOrigin="anonymous" />
+                  <img src={assinatura} alt="Assinatura do Cliente" className="h-20 object-contain bg-[#ffffff]" />
                   <div className="w-64 border-t border-[#9ca3af] mt-2 text-center text-xs text-[#4b5563] pt-1">
                     {cliente?.nome}
                   </div>
