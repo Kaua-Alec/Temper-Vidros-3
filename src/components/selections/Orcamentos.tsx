@@ -672,6 +672,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const [numero] = useState(orcamentoExistente ? orcamentoExistente.numero : genOrcamentoNumero());
   const [statusOrc, setStatusOrc] = useState(orcamentoExistente ? orcamentoExistente.status : "Pendente");
   const [ocultarValores, setOcultarValores] = useState(false);
+  const [ocultarMedidas, setOcultarMedidas] = useState(false);
   const [custoEstimado, setCustoEstimado] = useState<number>(0);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfReadyUrl, setPdfReadyUrl] = useState<{ url: string, name: string } | null>(null);
@@ -1031,6 +1032,10 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
             </div>
           </div>
           <div className="flex items-center gap-1.5 shrink-0">
+            <label className="flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[10px] sm:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
+              <input type="checkbox" checked={ocultarMedidas} onChange={(e) => setOcultarMedidas(e.target.checked)} className="accent-[color:var(--gold)]" />
+              <span className="hidden sm:inline">Ocultar Medidas</span>
+            </label>
             <label className="flex items-center gap-1.5 cursor-pointer mr-1 border border-[color:var(--navy-border)] px-2 py-1.5 rounded-lg text-[10px] sm:text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
               <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
               <span className="hidden sm:inline">Ocultar Preços</span>
@@ -1702,8 +1707,10 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       subtotal={subtotalTotal}
       descontoPerc={descontoPerc}
       total={totalGeral}
-      observacoes={obs}
+      id="print-template"
       ocultarValores={ocultarValores}
+      ocultarMedidas={ocultarMedidas}
+      observacoes={obs}
     />
   </>
   );
@@ -1989,6 +1996,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
   const [status, setStatus] = useState(orc.status);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [ocultarValores, setOcultarValores] = useState(false);
+  const [ocultarMedidas, setOcultarMedidas] = useState(false);
   const [sigOpen, setSigOpen] = useState(false);
   const [assinatura, setAssinatura] = useState<string | null>(orc.assinatura_base64 || null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
@@ -2094,6 +2102,10 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
           </Field>
           <div className="flex gap-2 flex-wrap justify-end items-center">
             <label className="flex items-center gap-1.5 cursor-pointer mr-2 text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
+              <input type="checkbox" checked={ocultarMedidas} onChange={(e) => setOcultarMedidas(e.target.checked)} className="accent-[color:var(--gold)]" />
+              Ocultar Medidas (PDF)
+            </label>
+            <label className="flex items-center gap-1.5 cursor-pointer mr-2 text-[12px] text-[color:var(--muted-foreground)] hover:text-white transition">
               <input type="checkbox" checked={ocultarValores} onChange={(e) => setOcultarValores(e.target.checked)} className="accent-[color:var(--gold)]" />
               Ocultar Preços (PDF)
             </label>
@@ -2147,6 +2159,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
         total={orc.total}
         observacoes={orc.observacoes || ""}
         ocultarValores={ocultarValores}
+        ocultarMedidas={ocultarMedidas}
         assinatura={assinatura}
       />
       <SignaturePadModal 

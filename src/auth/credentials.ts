@@ -21,7 +21,7 @@ export const AUTH_CREDENTIALS: AuthUser[] = [
   },
   {
     email: "cristiane@tvsf.com",
-    senha: "123",
+    senha: "301086",
     nome: "Cristiane",
   },
   {
