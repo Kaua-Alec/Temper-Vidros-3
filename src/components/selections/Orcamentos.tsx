@@ -703,6 +703,12 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const [precoCustom, setPrecoCustom] = useState<number | null>(null);
   const [ambienteInput, setAmbienteInput] = useState("");
   const [corFerragemInput, setCorFerragemInput] = useState("");
+  
+  // Custom Calculation States
+  const [valoresBase, setValoresBase] = useState<Record<string, number>>({});
+  const [vidroBaseSelecionado, setVidroBaseSelecionado] = useState("Vidro Incolor");
+  const [corAluminioBase, setCorAluminioBase] = useState("Alumínio Preto");
+  const [incluirKit, setIncluirKit] = useState(true);
 
   const [itens, setItens] = useState<OrcItemNovo[]>([]);
   const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
@@ -731,7 +737,30 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
     supabase.from("catalogo_produtos").select("*").eq("ativo", true).order("categoria").order("nome")
       .then(({ data }) => {
         const list = (data as Produto[] | null) ?? [];
-        setCatalogo(list);
+        setCatalogo(list.filter(p => p.categoria !== "Valores Base"));
+        
+        const base = list.filter(p => p.categoria === "Valores Base");
+        const mapBase: Record<string, number> = {
+          "Vidro Fumê": 200,
+          "Vidro Verde": 200,
+          "Vidro Incolor": 160,
+          "Vidro Jato": 265,
+          "Vidro com Película": 240,
+          "Alumínio Preto": 60,
+          "Alumínio Fosco": 60,
+          "Alumínio Branco": 60,
+          "Alumínio Bronze": 60,
+          "Alumínio Natural": 60,
+          "Alumínio Brilhante": 60,
+          "Alumínio Prata": 60,
+          "Alumínio Dourado": 60,
+          "Kit e Acessórios": 50,
+          "Porcentagem de Lucro": 30,
+        };
+        base.forEach(b => {
+          mapBase[b.nome] = Number(b.preco_m2 || b.preco_unitario || b.margem_lucro || 0);
+        });
+        setValoresBase(mapBase);
       });
 
     if (orcamentoExistente) {
@@ -775,10 +804,30 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
   const valorCalculado = useMemo(() => {
     if (origem === "catalogo") {
       if (!prodConfigSelecionado) return 0;
+      
+      const temMedidaFixa = !!(prodConfigSelecionado.largura_mm && prodConfigSelecionado.altura_mm);
+      const isCalculoCustom = prodConfigSelecionado.categoria === "Cálculo" || (!temMedidaFixa && !prodConfigSelecionado.preco_m2 && !prodConfigSelecionado.preco_unitario);
+
+      if (isCalculoCustom) {
+        const margemPerc = valoresBase["Porcentagem de Lucro"] || 30;
+        const margem = 1 + (margemPerc / 100);
+        
+        const precoVidroM2 = valoresBase[vidroBaseSelecionado] || 0;
+        const areaM2 = (larg / 1000) * (alt / 1000);
+        const custoVidro = areaM2 * precoVidroM2;
+
+        const precoAluminioM = valoresBase[corAluminioBase] || 0;
+        const custoAluminio = (larg / 1000) * precoAluminioM;
+
+        const custoKit = incluirKit ? (valoresBase["Kit e Acessórios"] || 0) : 0;
+
+        const custoTotal = custoVidro + custoAluminio + custoKit;
+        return custoTotal * margem * qtd;
+      }
+
       const margem = prodConfigSelecionado.margem_lucro ? (1 + prodConfigSelecionado.margem_lucro / 100) : 1;
 
       // Produto com medida padrão FIXA — usa preço unitário direto (preço total da peça)
-      const temMedidaFixa = !!(prodConfigSelecionado.largura_mm && prodConfigSelecionado.altura_mm);
       if (temMedidaFixa) {
         const precoUnit = precoCustom !== null
           ? precoCustom
@@ -814,23 +863,41 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
 
     if (origem === "catalogo") {
       if (!prodConfigSelecionado) { alert("Selecione um produto do catálogo."); return; }
-      const isM2 = !!prodConfigSelecionado.preco_m2;
-      const precoUnit = precoCustom !== null
-        ? precoCustom
-        : (prodConfigSelecionado.preco_m2 ?? prodConfigSelecionado.preco_unitario ?? 0);
+      
+      const temMedidaFixa = !!(prodConfigSelecionado.largura_mm && prodConfigSelecionado.altura_mm);
+      const isCalculoCustom = prodConfigSelecionado.categoria === "Cálculo" || (!temMedidaFixa && !prodConfigSelecionado.preco_m2 && !prodConfigSelecionado.preco_unitario);
 
-      const subDetalhes = [
-        `Qtd: ${qtd}`,
-        isM2 ? `${alt}×${larg}mm (${((larg / 1000) * (alt / 1000)).toFixed(2)}m²)` : null,
-        prodConfigSelecionado.espessura || cor || prodConfigSelecionado.cor ? [prodConfigSelecionado.espessura, cor || prodConfigSelecionado.cor].filter(Boolean).join(" · ") : null,
-        isM2 ? `${brl(precoUnit)}/m²` : `${brl(precoUnit)}/un`,
-        ...metaParts
-      ].filter(Boolean).join(" • ");
+      const isM2 = !!prodConfigSelecionado.preco_m2 || isCalculoCustom;
+      
+      let detalhesText = "";
+      if (isCalculoCustom) {
+        const area = ((larg / 1000) * (alt / 1000)).toFixed(2);
+        detalhesText = [
+          `Qtd: ${qtd}`,
+          `${alt}×${larg}mm (${area}m²)`,
+          `Vidro: ${vidroBaseSelecionado}`,
+          `${corAluminioBase}: ${(larg / 1000).toFixed(2)}m`,
+          incluirKit ? `+ Kit` : null,
+          ...metaParts
+        ].filter(Boolean).join(" • ");
+      } else {
+        const precoUnit = precoCustom !== null
+          ? precoCustom
+          : (prodConfigSelecionado.preco_m2 ?? prodConfigSelecionado.preco_unitario ?? 0);
+
+        detalhesText = [
+          `Qtd: ${qtd}`,
+          isM2 ? `${alt}×${larg}mm (${((larg / 1000) * (alt / 1000)).toFixed(2)}m²)` : null,
+          prodConfigSelecionado.espessura || cor || prodConfigSelecionado.cor ? [prodConfigSelecionado.espessura, cor || prodConfigSelecionado.cor].filter(Boolean).join(" · ") : null,
+          isM2 ? `${brl(precoUnit)}/m²` : `${brl(precoUnit)}/un`,
+          ...metaParts
+        ].filter(Boolean).join(" • ");
+      }
 
       setItens([...itens, {
         produto_id: prodConfigSelecionado.id,
         nome: prodConfigSelecionado.nome,
-        sub: subDetalhes,
+        sub: detalhesText,
         larg: larg || prodConfigSelecionado.largura_mm || 0,
         alt: alt || prodConfigSelecionado.altura_mm || 0,
         qtd,
@@ -875,7 +942,7 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
       if (!element) return;
       setIsGeneratingPdf(true);
       const originalClasses = element.className;
-      element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] absolute left-[-9999px] top-0 z-[-50]";
+      element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] fixed top-0 left-0 z-[-50]";
       
       const opt = {
         margin:       0.2,
@@ -1271,65 +1338,106 @@ function NovoOrcamento({ onClose, orcamentoExistente }: { onClose: () => void; o
                     {prodConfigSelecionado && (() => {
                       const temMedidaFixa = !!(prodConfigSelecionado.largura_mm && prodConfigSelecionado.altura_mm);
                       const temPrecoM2 = !!prodConfigSelecionado.preco_m2 && !temMedidaFixa;
+                      const isCalculoCustom = prodConfigSelecionado.categoria === "Cálculo" || (!temMedidaFixa && !temPrecoM2 && !prodConfigSelecionado.preco_unitario);
+
                       return (
-                        <div className="grid gap-2 mt-3" style={{ gridTemplateColumns: temMedidaFixa ? '1fr 1fr 1fr' : temPrecoM2 ? '1fr 1fr 1fr' : '1fr 1fr' }}>
-                          {temMedidaFixa ? (
-                            <>
-                              {/* Altura FIXA — read-only (altura primeiro) */}
+                        <div className="flex flex-col gap-3 mt-3">
+                          <div className="grid gap-2" style={{ gridTemplateColumns: (temMedidaFixa || temPrecoM2 || isCalculoCustom) ? '1fr 1fr 1fr' : '1fr 1fr' }}>
+                            {temMedidaFixa ? (
+                              <>
+                                {/* Altura FIXA — read-only (altura primeiro) */}
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1">
+                                    Altura
+                                    <span className="text-[9px] bg-[color:var(--gold)]/15 text-[color:var(--gold)] px-1 rounded">fixo</span>
+                                  </label>
+                                  <div className={`${inpCls} opacity-60 cursor-not-allowed select-none`}>{prodConfigSelecionado.altura_mm} mm</div>
+                                </div>
+                                {/* Largura FIXA — read-only */}
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1">
+                                    Largura
+                                    <span className="text-[9px] bg-[color:var(--gold)]/15 text-[color:var(--gold)] px-1 rounded">fixo</span>
+                                  </label>
+                                  <div className={`${inpCls} opacity-60 cursor-not-allowed select-none`}>{prodConfigSelecionado.largura_mm} mm</div>
+                                </div>
+                                {/* Quantidade */}
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
+                                  <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
+                                </div>
+                              </>
+                            ) : (temPrecoM2 || isCalculoCustom) ? (
+                              <>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Altura (mm)</label>
+                                  <input type="number" min="1" value={alt} onChange={(e) => setAlt(Number(e.target.value))} className={inpCls} />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Largura (mm)</label>
+                                  <input type="number" min="1" value={larg} onChange={(e) => setLarg(Number(e.target.value))} className={inpCls} />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
+                                  <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
+                                  <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                  <label className="text-[11px] text-[color:var(--muted-foreground)]">Preço Unitário (R$)</label>
+                                  <input
+                                    type="number"
+                                    step="0.01"
+                                    value={precoCustom !== null ? precoCustom : (prodConfigSelecionado?.preco_unitario ?? 0)}
+                                    onChange={(e) => setPrecoCustom(Number(e.target.value) || 0)}
+                                    placeholder={prodConfigSelecionado?.preco_unitario ? String(prodConfigSelecionado.preco_unitario) : "0"}
+                                    className={inpCls}
+                                  />
+                                </div>
+                              </>
+                            )}
+                          </div>
+
+                          {isCalculoCustom && (
+                            <div className="grid grid-cols-2 gap-2 p-3 bg-[color:var(--navy-base)] rounded-lg border border-[color:var(--navy-border)]/50 mt-1">
+                              <div className="col-span-2 text-[10px] font-semibold text-[color:var(--gold)] uppercase tracking-wider mb-1">
+                                Fórmula de Cálculo Personalizada
+                              </div>
                               <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1">
-                                  Altura
-                                  <span className="text-[9px] bg-[color:var(--gold)]/15 text-[color:var(--gold)] px-1 rounded">fixo</span>
+                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Tipo de Vidro</label>
+                                <select value={vidroBaseSelecionado} onChange={(e) => setVidroBaseSelecionado(e.target.value)} className={inpCls}>
+                                  <option value="Vidro Incolor">Vidro Incolor</option>
+                                  <option value="Vidro Verde">Vidro Verde</option>
+                                  <option value="Vidro Fumê">Vidro Fumê</option>
+                                  <option value="Vidro Jato">Vidro Jato</option>
+                                  <option value="Vidro com Película">Vidro com Película</option>
+                                </select>
+                              </div>
+                              <div className="flex flex-col gap-1">
+                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Cor do Alumínio</label>
+                                <select value={corAluminioBase} onChange={(e) => setCorAluminioBase(e.target.value)} className={inpCls}>
+                                  <option value="Alumínio Preto">Preto</option>
+                                  <option value="Alumínio Fosco">Fosco</option>
+                                  <option value="Alumínio Branco">Branco</option>
+                                  <option value="Alumínio Bronze">Bronze</option>
+                                  <option value="Alumínio Natural">Natural</option>
+                                  <option value="Alumínio Brilhante">Brilhante</option>
+                                  <option value="Alumínio Prata">Prata</option>
+                                  <option value="Alumínio Dourado">Dourado</option>
+                                </select>
+                              </div>
+                              <div className="col-span-2 flex items-center gap-2 mt-1">
+                                <label className="flex items-center gap-2 cursor-pointer text-[12px] text-white">
+                                  <input type="checkbox" checked={incluirKit} onChange={(e) => setIncluirKit(e.target.checked)} className="accent-[color:var(--gold)] w-3.5 h-3.5" />
+                                  Incluir Kit e Acessórios
                                 </label>
-                                <div className={`${inpCls} opacity-60 cursor-not-allowed select-none`}>{prodConfigSelecionado.altura_mm} mm</div>
                               </div>
-                              {/* Largura FIXA — read-only */}
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)] flex items-center gap-1">
-                                  Largura
-                                  <span className="text-[9px] bg-[color:var(--gold)]/15 text-[color:var(--gold)] px-1 rounded">fixo</span>
-                                </label>
-                                <div className={`${inpCls} opacity-60 cursor-not-allowed select-none`}>{prodConfigSelecionado.largura_mm} mm</div>
-                              </div>
-                              {/* Quantidade */}
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
-                                <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
-                              </div>
-                            </>
-                          ) : temPrecoM2 ? (
-                            <>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Altura (mm)</label>
-                                <input type="number" min="1" value={alt} onChange={(e) => setAlt(Number(e.target.value))} className={inpCls} />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Largura (mm)</label>
-                                <input type="number" min="1" value={larg} onChange={(e) => setLarg(Number(e.target.value))} className={inpCls} />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
-                                <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
-                              </div>
-                            </>
-                          ) : (
-                            <>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Quantidade</label>
-                                <input type="number" min="1" value={qtd} onChange={(e) => setQtd(Number(e.target.value))} className={inpCls} />
-                              </div>
-                              <div className="flex flex-col gap-1">
-                                <label className="text-[11px] text-[color:var(--muted-foreground)]">Preço Unitário (R$)</label>
-                                <input
-                                  type="number"
-                                  step="0.01"
-                                  value={precoCustom !== null ? precoCustom : (prodConfigSelecionado?.preco_unitario ?? 0)}
-                                  onChange={(e) => setPrecoCustom(Number(e.target.value) || 0)}
-                                  placeholder={prodConfigSelecionado?.preco_unitario ? String(prodConfigSelecionado.preco_unitario) : "0"}
-                                  className={inpCls}
-                                />
-                              </div>
-                            </>
+                            </div>
                           )}
                         </div>
                       );
@@ -2001,10 +2109,16 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
   const [assinatura, setAssinatura] = useState<string | null>(orc.assinatura_base64 || null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfReadyUrl, setPdfReadyUrl] = useState<{ url: string, name: string } | null>(null);
+  const [clienteTelefone, setClienteTelefone] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.from("orcamento_itens").select("*").eq("orcamento_id", orc.id).then(({ data }) => setItens((data as OrcamentoItem[] | null) ?? []));
-  }, [orc.id]);
+    if (orc.cliente_id) {
+      supabase.from("clientes").select("telefone").eq("id", orc.cliente_id).single().then(({ data }) => {
+        if (data?.telefone) setClienteTelefone(data.telefone.replace(/\D/g, ""));
+      });
+    }
+  }, [orc.id, orc.cliente_id]);
 
   const salvarStatus = async () => {
     await supabase.from("orcamentos").update({ status }).eq("id", orc.id);
@@ -2114,7 +2228,8 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
             </button>
             <button onClick={() => {
               const text = `Olá${orc.cliente_nome ? ` ${orc.cliente_nome.split(" ")[0]}` : ""}, segue as informações do seu orçamento ${orc.numero}.\n\n*Valor Total:* ${brl(orc.total)}\n*Validade:* ${orc.validade}\n*Pagamento:* ${orc.forma_pagamento}\n\nQualquer dúvida estamos à disposição!`;
-              window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, "_blank");
+              const url = clienteTelefone ? `https://wa.me/55${clienteTelefone}?text=${encodeURIComponent(text)}` : `https://wa.me/?text=${encodeURIComponent(text)}`;
+              window.open(url, "_blank");
             }} className="flex items-center gap-1 border border-[#25D366]/30 bg-[#25D366]/10 hover:bg-[#25D366]/20 text-[#25D366] px-2.5 py-1.5 rounded-lg text-[12px] transition font-medium">
               <svg className="h-3.5 w-3.5 fill-current" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/></svg> WhatsApp
             </button>
@@ -2124,7 +2239,7 @@ function DetalheOrcamento({ orc, onEdit, onClose }: { orc: Orcamento; onEdit: (o
                 if (!element) return;
                 setIsGeneratingPdf(true);
                 const originalClasses = element.className;
-                element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] absolute left-[-9999px] top-0 z-[-50]";
+                element.className = "bg-white text-[#000000] font-sans min-h-screen block w-[800px] fixed top-0 left-0 z-[-50]";
                 const opt = { margin: 0.2, filename: `Orcamento_${orc.numero}.pdf`, image: { type: 'jpeg' as const, quality: 0.85 }, html2canvas: { scale: 1, useCORS: true }, jsPDF: { unit: 'in', format: 'a4', orientation: 'portrait' as const } };
                 
                 html2pdf().set(opt).from(element).save().then(() => {

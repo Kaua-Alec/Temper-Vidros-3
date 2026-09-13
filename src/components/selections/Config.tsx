@@ -27,8 +27,8 @@ type CatalogoProduto = {
 export function Config() {
   const [tab, setTab] = useState<TabId>("catalogo");
   const tabs: Array<{ id: TabId; label: string }> = [
-    { id: "catalogo", label: "Catálogo de produtos" },
-    { id: "calculos", label: "Catálogo de cálculos" },
+    { id: "catalogo", label: "Padrão" },
+    { id: "calculos", label: "Fora Padrão" },
     { id: "sistema", label: "Sistema" },
   ];
 
@@ -46,7 +46,12 @@ export function Config() {
         ))}
       </div>
       {tab === "catalogo" && <Catalogo isCalculo={false} />}
-      {tab === "calculos" && <Catalogo isCalculo={true} />}
+      {tab === "calculos" && (
+        <div className="space-y-6">
+          <ValoresBase />
+          <Catalogo isCalculo={true} />
+        </div>
+      )}
       {tab === "sistema" && <Sistema />}
     </div>
   );
@@ -466,6 +471,136 @@ function Sistema() {
           Quando um orçamento é marcado como "Aprovado", o sistema cria automaticamente um Pedido na
           produção e um lançamento em Contas a Receber.
         </p>
+      </div>
+    </div>
+  );
+}
+
+const BASE_ITEMS = [
+  { key: "vidro_fume", label: "Vidro Fumê", unidade: "m²", defaultPrice: 200, field: "preco_m2" },
+  { key: "vidro_verde", label: "Vidro Verde", unidade: "m²", defaultPrice: 200, field: "preco_m2" },
+  { key: "vidro_incolor", label: "Vidro Incolor", unidade: "m²", defaultPrice: 160, field: "preco_m2" },
+  { key: "vidro_jato", label: "Vidro Jato", unidade: "m²", defaultPrice: 265, field: "preco_m2" },
+  { key: "vidro_pelicula", label: "Vidro com Película", unidade: "m²", defaultPrice: 240, field: "preco_m2" },
+  { key: "aluminio_preto", label: "Alumínio Preto", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_fosco", label: "Alumínio Fosco", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_branco", label: "Alumínio Branco", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_bronze", label: "Alumínio Bronze", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_natural", label: "Alumínio Natural", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_brilhante", label: "Alumínio Brilhante", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_prata", label: "Alumínio Prata", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "aluminio_dourado", label: "Alumínio Dourado", unidade: "m", defaultPrice: 60, field: "preco_m2" },
+  { key: "kit_acessorios", label: "Kit e Acessórios", unidade: "kit", defaultPrice: 50, field: "preco_unitario" },
+  { key: "lucro", label: "Porcentagem de Lucro", unidade: "%", defaultPrice: 30, field: "preco_unitario" },
+];
+
+function ValoresBase() {
+  const [valores, setValores] = useState<Record<string, number>>({});
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data } = await supabase.from("catalogo_produtos").select("*").eq("categoria", "Valores Base");
+    const loadedValores: Record<string, number> = {};
+    if (data) {
+      data.forEach(item => {
+        const conf = BASE_ITEMS.find(b => b.label === item.nome);
+        if (conf) {
+          loadedValores[conf.key] = Number(item[conf.field as keyof typeof item] || 0);
+        }
+      });
+    }
+    const initialValores = { ...loadedValores };
+    BASE_ITEMS.forEach(item => {
+      if (initialValores[item.key] === undefined) {
+        initialValores[item.key] = item.defaultPrice;
+      }
+    });
+    setValores(initialValores);
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    void load();
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    const { data: existing } = await supabase.from("catalogo_produtos").select("*").eq("categoria", "Valores Base");
+    
+    for (const item of BASE_ITEMS) {
+      const val = valores[item.key] || 0;
+      const exist = existing?.find(e => e.nome === item.label);
+      
+      const payload: any = {
+        nome: item.label,
+        categoria: "Valores Base",
+        unidade: item.unidade,
+        ativo: true
+      };
+      
+      if (item.field === "preco_m2") {
+        payload.preco_m2 = val;
+      } else if (item.field === "preco_unitario") {
+        payload.preco_unitario = val;
+      } else if (item.field === "margem_lucro") {
+        payload.margem_lucro = val;
+      }
+
+      if (exist) {
+        await supabase.from("catalogo_produtos").update(payload).eq("id", exist.id);
+      } else {
+        await supabase.from("catalogo_produtos").insert(payload);
+      }
+    }
+    
+    setSaving(false);
+    alert("Valores Base salvos com sucesso!");
+  };
+
+  if (loading) {
+    return (
+      <div className="rounded-lg border border-navy-border bg-navy-card p-6 text-center text-xs text-muted-foreground">
+        Carregando Valores Base...
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-lg border border-navy-border bg-navy-card p-6">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-5 gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-gold-2">Valores Base</h3>
+          <p className="text-xs text-muted-foreground mt-1">Defina os valores padrão que serão usados nos cálculos.</p>
+        </div>
+        <button
+          onClick={save}
+          disabled={saving}
+          className="flex items-center justify-center gap-1.5 rounded-md bg-gold px-4 py-2 text-sm font-semibold text-navy-deep hover:bg-gold-2 disabled:opacity-50 whitespace-nowrap transition-colors"
+        >
+          {saving ? "Salvando..." : "Salvar Valores"}
+        </button>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {BASE_ITEMS.map(item => (
+          <div key={item.key} className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">{item.label}</label>
+            <div className="relative">
+              {item.unidade !== "%" && <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>}
+              <input
+                type="number"
+                value={valores[item.key] ?? ""}
+                onChange={(e) => setValores({ ...valores, [item.key]: Number(e.target.value) })}
+                className={`w-full rounded-md border border-navy-border bg-navy-surface py-2 ${item.unidade !== "%" ? "pl-8" : "pl-3"} pr-8 text-sm text-white placeholder-muted-foreground focus:border-gold focus:outline-none transition-colors`}
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                {item.unidade === "%" ? "%" : `/${item.unidade}`}
+              </span>
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   );
